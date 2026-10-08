@@ -1,15 +1,17 @@
-import { Renderer } from "./src/view/renderer.js";
-import { Scene } from "./src/model/scene.js";
-import { InputController } from "./src/controller/input.js";
+import { Renderer } from "./src/core/renderer.js";
+import { Scene } from "./src/core/nodes/scene.js";
+import { SceneController } from "./src/core/sceneController.js";
 
 const app = new class App {
-  scene = new Scene();
-  renderer = new Renderer();
-  input = new InputController();
+  /** @type { Scene } */
+  scene;
 
   constructor() {
-    this.renderer.init().then(() => {
-      this.renderer.render(this.scene);
-    })
+    Renderer
+      .init()
+      .then(() => {
+        SceneController.changeScene(new Scene());
+        SceneController.beginLoop();
+      })
   }
 }
