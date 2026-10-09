@@ -2,7 +2,7 @@ import { Mesh } from './mesh.js';
 import { Renderer } from '../renderer.js';
 
 /**
- * Parses OBJ position and texture-coordinate data into a non-indexed XYZ+UV vertex array.
+ * Parses OBJ position, normal, and texture-coordinate data into an interleaved vertex array.
  * @param { string } source
  * @returns { Float32Array }
  */
@@ -13,6 +13,7 @@ export function parseOBJ(source) {
 
   const positions = [];
   const texCoords = [];
+  const normals = [];
   const vertices = [];
   const lines = source.split(/\r?\n/);
 
@@ -52,6 +53,16 @@ export function parseOBJ(source) {
         throw new Error(`Invalid OBJ vertex on line ${lineNumber}`);
       }
       positions.push(position);
+    } else if (command === 'vn') {
+      if (values.length < 3) {
+        throw new Error(`OBJ normal is incomplete on line ${lineNumber}`);
+      }
+
+      const normal = values.slice(0, 3).map(Number);
+      if (!normal.every(Number.isFinite)) {
+        throw new Error(`Invalid OBJ normal on line ${lineNumber}`);
+      }
+      normals.push(normal);
     } else if (command === 'vt') {
       if (values.length < 1) {
         throw new Error(`OBJ texture coordinate is incomplete on line ${lineNumber}`);
@@ -77,12 +88,35 @@ export function parseOBJ(source) {
         const texCoord = parts[1]
           ? texCoords[resolveIndex(parts[1], texCoords.length, 'texture coordinate', lineNumber)]
           : [0, 0];
+        const normal = parts[2]
+          ? normals[resolveIndex(parts[2], normals.length, 'normal', lineNumber)]
+          : null;
 
-        return [...position, ...texCoord];
+        return { position, normal, texCoord };
       });
 
       for (let corner = 1; corner < face.length - 1; corner++) {
-        vertices.push(...face[0], ...face[corner], ...face[corner + 1]);
+        const triangle = [face[0], face[corner], face[corner + 1]];
+        const [a, b, c] = triangle.map(({ position }) => position);
+        const ab = b.map((value, axis) => value - a[axis]);
+        const ac = c.map((value, axis) => value - a[axis]);
+        const fallbackNormal = [
+          ab[1] * ac[2] - ab[2] * ac[1],
+          ab[2] * ac[0] - ab[0] * ac[2],
+          ab[0] * ac[1] - ab[1] * ac[0],
+        ];
+        const length = Math.hypot(...fallbackNormal);
+        if (length > 0) {
+          for (let axis = 0; axis < 3; axis++) fallbackNormal[axis] /= length;
+        }
+
+        for (const vertex of triangle) {
+          vertices.push(
+            ...vertex.position,
+            ...(vertex.normal ?? fallbackNormal),
+            ...vertex.texCoord,
+          );
+        }
       }
     }
   }
@@ -109,7 +143,7 @@ export class ObjMesh extends Mesh {
     new Float32Array(this.buffer.getMappedRange()).set(vertices);
 
     this.buffer.unmap();
-    this.vertexCount = vertices.length / 5;
+    this.vertexCount = vertices.length / 8;
   }
 
   /** @param { string } url */

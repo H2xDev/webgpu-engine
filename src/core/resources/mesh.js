@@ -7,7 +7,7 @@ export class Mesh {
 
   /** @type { GPUVertexBufferLayout } */
   bufferLayout = {
-    arrayStride: 20, // how much bytes per vertex
+    arrayStride: 32, // position, normal, and UV per vertex
     attributes: [
       {
         shaderLocation: 0,
@@ -16,8 +16,13 @@ export class Mesh {
       },
       {
         shaderLocation: 1,
+        format: 'float32x3',
+        offset: 12,
+      },
+      {
+        shaderLocation: 2,
         format: 'float32x2',
-        offset: 12, // 3 floats offset
+        offset: 24, // 6 floats offset
       }
     ]
   }

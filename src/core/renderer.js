@@ -137,7 +137,7 @@ export const Renderer = new class Renderer {
         module: this.shaderModule,
         entryPoint: "vertex_main",
         buffers: [{
-          arrayStride: 20, // how much bytes per vertex
+          arrayStride: 32, // position, normal, and UV per vertex
           attributes: [
             {
               shaderLocation: 0,
@@ -146,8 +146,13 @@ export const Renderer = new class Renderer {
             },
             {
               shaderLocation: 1,
+              format: 'float32x3',
+              offset: 12,
+            },
+            {
+              shaderLocation: 2,
               format: 'float32x2',
-              offset: 12, // 3 floats offset
+              offset: 24,
             }
           ]
         }],
