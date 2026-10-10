@@ -99,21 +99,36 @@ export const Renderer = new class Renderer {
 
     this.materialBindGroupLayout = this.device.createBindGroupLayout({
       entries: [
-        {
+        { // Albedo texture
           binding: 0,
           visibility: GPUShaderStage.FRAGMENT,
           texture: {},
         },
-        {
+        { // Albedo sampler
           binding: 1,
           visibility: GPUShaderStage.FRAGMENT,
           sampler: {},
-        }
+        },
+        { // Normal map texture
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: {},
+        },
+        { // Normal map sampler
+          binding: 3,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: {},
+        },
+        { // Material properties
+          binding: 4,
+          visibility: GPUShaderStage.FRAGMENT,
+          buffer: {},
+        },
       ]
     });
 
-    const texture = await Texture.load("/test.png")
-    this.defaultMaterial = new Material().init(texture);
+    const texture = await Texture.load("/test.png");
+    this.defaultMaterial = new Material().init(texture, texture);
   }
 
   async #initDevice() {
@@ -237,12 +252,14 @@ export const Renderer = new class Renderer {
       const offset = this.objectStride * index;
       this.device.queue.writeBuffer(this.objectBuffer, offset, info.transform);
       rp.setVertexBuffer(0, info.vertices);
+      rp.setIndexBuffer(info.indices, "uint32");
       rp.setBindGroup(0, this.bindGroup, [ offset ]);
 
-      const material = info.material || this.defaultMaterial;
-      rp.setBindGroup(1, material.bindGroup);
-
-      rp.draw(info.vertexCount);
+      for (const surface of info.surfaces) {
+        const material = surface.material || info.material || this.defaultMaterial;
+        rp.setBindGroup(1, material.bindGroup);
+        rp.drawIndexed(surface.count, 1, surface.offset);
+      }
     });
 
     rp.end();

@@ -27,7 +27,7 @@ export class Scene extends Entity3D {
 
   async enter() {
     this.camera.position = [0, 0, 2];
-    const sponza = await ObjMesh.load("/sponza.obj");
+    const sponza = await ObjMesh.load("/sponza/sponza.obj");
 
     this.mi = new MeshInstance(sponza);
     this.mi.position = [0, 0, 0];

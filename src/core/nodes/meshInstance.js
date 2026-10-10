@@ -19,10 +19,13 @@ export class MeshInstance extends Entity3D {
     if (!this.mesh) return;
 
     Renderer.queueRender({
-      vertices: this.mesh.buffer,
+      vertices: this.mesh.vertexBuffer,
+      indices: this.mesh.indexBuffer,
       vertexCount: this.mesh.vertexCount,
+      indexCount: this.mesh.indexCount,
       transform: this.transform,
       material: this.material,
+      surfaces: this.mesh.surfaces,
     })
   }
 }
