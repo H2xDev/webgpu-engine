@@ -150,4 +150,3 @@ fn fragment_main(
 
   return color;
 }
-

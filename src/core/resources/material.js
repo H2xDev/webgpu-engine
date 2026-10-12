@@ -1,4 +1,5 @@
 import { Renderer } from "../renderer.js";
+import { Layouts } from "../rendering/layouts.js";
 import { Texture } from "./texture.js";
 
 export class Material {
@@ -105,7 +106,7 @@ export class Material {
 
   #initBindGroup() {
     this.bindGroup = Renderer.device.createBindGroup({
-      layout: Renderer.materialBindGroupLayout,
+      layout: Layouts.materialLayout,
       entries: [
         {
           binding: 0,

@@ -2,6 +2,9 @@ export const ShaderManager = new class ShaderManager {
   /** @type { Map<string, Promise<String>> } */
   cache = new Map()
 
+  /** @type { Map<string, Promise<GPUShaderModule>> } */
+  moduleCache = new Map()
+
   /**
     * Imports a shader source code
     *
@@ -26,8 +29,16 @@ export const ShaderManager = new class ShaderManager {
     * @param { GPUDevice } device
     */
   async createModule(path, device) {
-    return this
+    if (this.moduleCache.has(path)) {
+      return this.moduleCache.get(path)
+    }
+
+    const promise = this
       .import(path)
       .then(code => device.createShaderModule({ code }))
+
+    this.moduleCache.set(path, promise);
+
+    return promise;
   }
 }
