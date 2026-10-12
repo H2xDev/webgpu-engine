@@ -47,6 +47,31 @@ export class Entity3D {
     return vec3.fromValues(-this.transform[8], -this.transform[9], -this.transform[10]);
   }
 
+  set forward(value) {
+    value = vec3.normalize(vec3.create(), value);
+
+    const up = this.up;
+    const right = vec3.create();
+    vec3.cross(right, up, value);
+    vec3.normalize(right, right);
+
+    const newUp = vec3.create();
+    vec3.cross(newUp, value, right);
+    vec3.normalize(newUp, newUp);
+
+    this.transform[0] = right[0];
+    this.transform[1] = right[1];
+    this.transform[2] = right[2];
+
+    this.transform[4] = newUp[0];
+    this.transform[5] = newUp[1];
+    this.transform[6] = newUp[2];
+
+    this.transform[8] = -value[0];
+    this.transform[9] = -value[1];
+    this.transform[10] = -value[2];
+  }
+
   get up() {
     return vec3.fromValues(this.transform[4], this.transform[5], this.transform[6]);
   }

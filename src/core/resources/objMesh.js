@@ -4,14 +4,8 @@ import { Material } from './material.js';
 import { Texture } from './texture.js';
 
 const resolveUrl = (baseUrl, path) => {
-      console.log(path);
   path = path.replace(/\\/g, '/');
   return baseUrl.slice(0, baseUrl.lastIndexOf('/') + 1) + path;
-};
-
-const colorTexture = ([r, g, b]) => {
-  const pixels = new Uint8Array([r, g, b, 1].map((v) => Math.round(Math.min(Math.max(v, 0), 1) * 255)));
-  return new Texture().initPixels(1, 1, pixels);
 };
 
 class ObjMaterialImporter {
