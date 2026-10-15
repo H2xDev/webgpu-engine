@@ -93,9 +93,9 @@ export class MainRenderPass {
 
   #initBuffer() {
     this.uniformBuffer = this.device.createBuffer({
-      size: 64 * 4 + 16 + 16,
+      size: 64 * 6, // 6 matrices of 4x4 floats (16 floats * 4 bytes each)
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      label: 'MainRenderPass Uniform Buffer'
+      label: 'RenderData struct uniform'
     });
   }
 
@@ -106,7 +106,7 @@ export class MainRenderPass {
       colorAttachments: [{
         view: context.getCurrentTexture().createView(),
         clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
-        loadOp: "clear",
+        loadOp: "load",
         storeOp: "store",
       }],
       depthStencilAttachment: {
@@ -173,10 +173,12 @@ export class MainRenderPass {
     this.pipeline = device.createRenderPipeline({
       label: "Main Render Pipeline",
       layout: device.createPipelineLayout({
+        label: "Main Render Pipeline Layout",
         bindGroupLayouts: [
           Layouts.geometryLayout,
           Layouts.materialLayout,
-          Layouts.shadowMapLayout
+          Layouts.shadowMapLayout,
+          Layouts.environmentLayout
         ]
       }),
       vertex: Object.assign(MainRenderPass.vertexState, {

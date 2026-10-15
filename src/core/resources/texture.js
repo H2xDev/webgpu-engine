@@ -7,8 +7,11 @@ export class Texture {
   /** @type { GPUSampler } */
   sampler;
 
-  /** @param { HTMLImageElement } image */
-  init(image) {
+  /**
+    * @param { HTMLImageElement } image
+    * @param { boolean } generateMipmaps
+    */
+  init(image, generateMipmaps = false) {
     Renderer.device.queue.copyExternalImageToTexture(
       { source: image },
       { texture: this.#createTexture(image.width, image.height) },
@@ -18,6 +21,10 @@ export class Texture {
     return this;
   }
 
+  /**
+    * @param { number } width
+    * @param { number } height
+    */
   #createTexture(width, height) {
     this.texture = Renderer.device.createTexture({
       size: [width, height, 1],
@@ -32,6 +39,10 @@ export class Texture {
       mipmapFilter: "linear",
     });
     return this.texture;
+  }
+
+  #generateMipmaps(image) {
+    // TODO: Implement mipmap generation
   }
 
   /** @param { string } url */

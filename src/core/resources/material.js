@@ -32,12 +32,13 @@ export class Material {
   bindGroup;
 
   /** @type { TransparencyType } */
-  transparency
+  transparency = TransparencyType.OPAQUE;
 
   /** @type { GPUBuffer } */
   #uniformBuffer;
 
-  #normalScale = 3.0;
+  #normalScale = 1.0;
+
   get normalScale() {
     return this.#normalScale;
   }

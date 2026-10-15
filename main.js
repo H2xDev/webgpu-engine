@@ -8,6 +8,8 @@ import { ObjMesh } from "./src/core/resources/objMesh.js";
 import { MeshInstance } from "./src/core/nodes/meshInstance.js";
 import { DirectionalLight } from "./src/core/nodes/directionalLight.js";
 import { CameraControl } from "./src/game/cameraControl.js";
+import { Texture } from "./src/core/resources/texture.js";
+import { Environment } from "./src/core/nodes/environment.js";
 
 const MainScene = new class MainScene extends Scene {
   camera = new Camera3D();
@@ -16,10 +18,13 @@ const MainScene = new class MainScene extends Scene {
   meshInstance = new MeshInstance();
 
   async enter() {
-    this.camera.position = [0, -100, 2];
+    const panoramaTexture = await Texture.load("/src/game/sky_12_2k.png");
+    const env = new Environment(panoramaTexture);
+
+    this.cameraControl.position = [0, -100, 2];
     this.directionalLight.forward = vec3.normalize(vec3.create(), [0.7, -1, 0]);
-    this.camera.forward = vec3.normalize(vec3.create(), [1, -1, 0]);
-    mat4.lookAt(this.camera.transform, this.camera.position, vec3.add(vec3.create(), this.camera.position, [1, 0, 0]), [0, 1, 0]);
+    this.cameraControl.forward = vec3.normalize(vec3.create(), [1, -1, 0]);
+    mat4.lookAt(this.cameraControl.transform, this.cameraControl.position, vec3.add(vec3.create(), this.cameraControl.position, [1, 0, 0]), [0, 1, 0]);
     const sponza = await ObjMesh.load("/sponza/sponza.obj");
 
     this.meshInstance= new MeshInstance(sponza);

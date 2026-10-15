@@ -1,10 +1,23 @@
-struct TransformData {
-	view: mat4x4<f32>,
-	projection: mat4x4<f32>,
-  lightView: mat4x4<f32>,
-  lightProjection: mat4x4<f32>,
-  lightColor: vec3<f32>,
-  time: f32
+struct CameraData {
+  view: mat4x4<f32>,
+  transform: mat4x4<f32>,
+  projection: mat4x4<f32>
+};
+
+struct DirectionalLightData {
+  view: mat4x4<f32>,
+  projection: mat4x4<f32>,
+  color: vec3<f32>,
+};
+
+struct EnvironmentData {
+  cameraData: CameraData,
+  energy: f32,
+};
+
+struct RenderData {
+  camera: CameraData,
+  directionalLight: DirectionalLightData,
 };
 
 struct ObjectData {
@@ -15,7 +28,7 @@ struct MaterialProperties {
   normalScale: f32,
 }
 
-@binding(0) @group(0) var<uniform> transformUBO: TransformData;
+@binding(0) @group(0) var<uniform> renderData: RenderData;
 @binding(1) @group(0) var<storage, read> object: ObjectData;
 
 @binding(0) @group(1) var albedo: texture_2d<f32>;
@@ -27,6 +40,11 @@ struct MaterialProperties {
 
 @binding(0) @group(2) var shadowMap: texture_depth_2d;
 @binding(1) @group(2) var shadowMapSampler: sampler_comparison;
+
+@binding(0) @group(3) var environmentMap: texture_2d<f32>;
+@binding(1) @group(3) var environmentMapSampler: sampler;
+@binding(2) @group(3) var<uniform> envData: EnvironmentData;
+
 
 struct Fragment {
 	@builtin(position) position: vec4<f32>,
@@ -46,8 +64,8 @@ fn vertex_main(
 ) -> Fragment {
 	var output: Fragment;
 
-	output.position = transformUBO.projection *
-		transformUBO.view *
+	output.position = renderData.camera.projection *
+		renderData.camera.view *
 		object.model *
 		vec4<f32>(vpos, 1.0);
 
@@ -55,8 +73,8 @@ fn vertex_main(
   output.world_pos = (object.model * vec4<f32>(vpos, 1.0)).xyz;
   output.normal = normalize((object.model * vec4<f32>(normal, 0.0)).xyz);
 
-  output.depth_coord = transformUBO.lightProjection *
-    transformUBO.lightView *
+  output.depth_coord = renderData.directionalLight.projection *
+    renderData.directionalLight.view *
     object.model *
     vec4<f32>(vpos, 1.0);
 
@@ -111,6 +129,20 @@ fn shadow_pcf(uv: vec2<f32>, depth: f32) -> f32 {
   return shadow / 18.0;
 }
 
+fn get_environment_color(world_normal: vec3<f32>, light_direction: vec3<f32>) -> vec3<f32> {
+  let affect: f32 = max(0.0, dot(world_normal, light_direction));
+  let reflected_ray: vec3<f32> = reflect(-light_direction, world_normal);
+
+  let u: f32 = 0.5 + atan2(reflected_ray.z, reflected_ray.x) / (2.0 * 3.1415926535897932384626433832795);
+  let v: f32 = 0.5 - asin(reflected_ray.y) / 3.1415926535897932384626433832795;
+
+  return mix(
+    textureSampleLevel(environmentMap, environmentMapSampler, vec2<f32>(u, v), 3.0).rgb * envData.energy,
+    vec3<f32>(1.0),
+    1.0 - affect
+  );
+}
+
 @fragment
 fn fragment_main(
   @builtin(position) pos: vec4<f32>,
@@ -137,18 +169,18 @@ fn fragment_main(
 
   var tbn: mat3x3<f32> = cotangent_frame(normal, world_pos, uv);
 
-  var lightDirection: vec3<f32> = vec3<f32>(
-    transformUBO.lightView[0].z,
-    transformUBO.lightView[1].z,
-    transformUBO.lightView[2].z
-  );
+  var light_direction: vec3<f32> = normalize(vec3<f32>(
+    renderData.directionalLight.view[0].z,
+    renderData.directionalLight.view[1].z,
+    renderData.directionalLight.view[2].z
+  ));
 
   var normal_mapped: vec3<f32> = normalize(tbn * normal_map_sample);
-  var lightness: f32 = max(0.25, dot(normalize(lightDirection), normal_mapped) * shadowValue);
+  var lightness: f32 = max(0.25, dot(light_direction, normal_mapped) * shadowValue);
 
   var color: vec4<f32> = textureSample(albedo, albedoSampler, uv);
 
-  color.rgb *= lightness * transformUBO.lightColor;
+  color.rgb *= lightness * renderData.directionalLight.color * get_environment_color(normal_mapped, light_direction);
 
   return color;
 }

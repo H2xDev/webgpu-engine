@@ -1,6 +1,3 @@
-import { mat4 } from "./gl-matrix/index.js";
-
-import { ShaderManager } from "./shaderManager.js";
 import { assert } from "./utils.js";
 import { Material } from "./resources/material.js";
 import { Texture } from "./resources/texture.js";
@@ -10,6 +7,8 @@ import { DirectionalLight } from "./nodes/directionalLight.js";
 import { MainRenderPass } from "./rendering/mainRenderPass.js";
 import { ShadowRenderPass } from "./rendering/shadowRenderPass.js";
 import { Layouts } from "./rendering/layouts.js";
+import { EnvironmentRenderPass } from "./rendering/environmentRenderPass.js";
+import { Environment } from "./nodes/environment.js";
 
 export const Renderer = new class Renderer {
   canvas = document.createElement("canvas");
@@ -54,6 +53,9 @@ export const Renderer = new class Renderer {
 
   /** @type { ShadowRenderPass } */
   shadowRenderPass;
+
+  /** @type { EnvironmentRenderPass } */
+  envRenderPass;
 
   time = performance.now();
 
@@ -119,6 +121,9 @@ export const Renderer = new class Renderer {
     this.mainRenderPass = await new MainRenderPass(this.device, this.context)
       .initShadowBindGroup(this.shadowRenderPass.depthTextureView, this.shadowRenderPass.depthTextureSampler)
       .init();
+
+    this.envRenderPass = await new EnvironmentRenderPass(this.device, this.context)
+      .init();
   }
 
   #initBindGroup() {
@@ -157,21 +162,40 @@ export const Renderer = new class Renderer {
 
     const commandEncoder = this.device.createCommandEncoder();
 
+    if (Environment.current) {
+      this.envRenderPass.updateViewTexture();
+      const envPass = commandEncoder.beginRenderPass(this.envRenderPass.renderPassDescriptor);
+      camera.writeToBuffer(this.envRenderPass.uniformBuffer);
+      envPass.setPipeline(this.envRenderPass.pipeline);
+      envPass.setBindGroup(0, Environment.current.bindGroup);
+      envPass.draw(4, 1, 0, 0);
+      envPass.end();
+    }
+
+
     if (DirectionalLight.current) {
       const shadowPass = commandEncoder.beginRenderPass(this.shadowRenderPass.renderPassDescriptor);
 
-      this.#writeCameraDataToBuffer(DirectionalLight.current, this.shadowRenderPass.uniformBuffer);
+      DirectionalLight.current.writeToBuffer(this.shadowRenderPass.uniformBuffer);
       shadowPass.setPipeline(this.shadowRenderPass.pipeline);
       this.#processRenderQueue(shadowPass, this.shadowBindGroup);
       shadowPass.end();
     }
 
-    this.#writeCameraDataToBuffer(camera, this.mainRenderPass.uniformBuffer);
+    camera.writeToBuffer(this.mainRenderPass.uniformBuffer);
+
+    if (DirectionalLight.current) {
+      DirectionalLight.current.writeLightDataToBuffer(this.mainRenderPass.uniformBuffer, 64 * 3);
+    }
+
     this.mainRenderPass.updateViewTexture();
     const mainPass = commandEncoder.beginRenderPass(this.mainRenderPass.renderPassDescriptor);
 
     mainPass.setPipeline(this.mainRenderPass.pipeline);
     mainPass.setBindGroup(2, this.mainRenderPass.shadowBindGroup);
+    if (Environment.current) {
+      mainPass.setBindGroup(3, Environment.current.bindGroup);
+    }
     this.#processRenderQueue(mainPass);
     mainPass.end();
 
@@ -194,23 +218,6 @@ export const Renderer = new class Renderer {
         rp.drawIndexed(surface.count, 1, surface.offset);
       }
     });
-  }
-
-  /**
-   * @param { Camera3D } camera
-   * @param { GPUBuffer } buffer
-   */
-  #writeCameraDataToBuffer(camera, buffer) {
-    this.device.queue.writeBuffer(buffer, 0, mat4.invert(mat4.create(), camera.transform));
-    this.device.queue.writeBuffer(buffer, 64, camera.projection);
-
-    if (DirectionalLight.current) {
-      this.device.queue.writeBuffer(buffer, 128, mat4.invert(mat4.create(), DirectionalLight.current.transform));
-      this.device.queue.writeBuffer(buffer, 192, DirectionalLight.current.projection);
-      this.device.queue.writeBuffer(buffer, 256, new Float32Array(DirectionalLight.current.color));
-    }
-
-    this.device.queue.writeBuffer(buffer, 268, new Float32Array([ (performance.now() - this.time) / 1000 ]));
   }
 
   clearRenderQueue() {

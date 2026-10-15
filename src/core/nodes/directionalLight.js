@@ -1,4 +1,5 @@
 import { mat4, vec3 } from '../gl-matrix/index.js';
+import { Renderer } from '../renderer.js';
 import { Camera3D } from './camera.js';
 
 export class DirectionalLight extends Camera3D {
@@ -27,5 +28,15 @@ export class DirectionalLight extends Camera3D {
   update() {
     if (!Camera3D.current) return;
     this.position = vec3.scaleAndAdd(this.position, Camera3D.current.position, this.forward, -this.distance);
+  }
+
+  /**
+    * @param { GPUBuffer } buffer
+    * @param { number } offset
+    */
+  writeLightDataToBuffer(buffer, offset = 0) {
+    Renderer.device.queue.writeBuffer(buffer, offset + 0, mat4.invert(mat4.create(), this.globalTransform));
+    Renderer.device.queue.writeBuffer(buffer, offset + 64, this.projection);
+    Renderer.device.queue.writeBuffer(buffer, offset + 128, new Float32Array(this.color));
   }
 }

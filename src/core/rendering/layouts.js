@@ -71,6 +71,29 @@ export const Layouts = new class Layouts {
     ],
   }
 
+  #environmentLayout = {
+    label: 'Environment Layout',
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {}
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {}
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: 'uniform',
+        }
+      }
+    ]
+  }
+
   /** @type { GPUBindGroupLayout } */
   materialLayout;
 
@@ -80,6 +103,9 @@ export const Layouts = new class Layouts {
   /** @type { GPUBindGroupLayout } */
   shadowMapLayout;
 
+  /** @type { GPUBindGroupLayout } */
+  environmentLayout;
+
   /**
    * @param { GPUDevice } device
    */
@@ -87,5 +113,6 @@ export const Layouts = new class Layouts {
     this.geometryLayout = device.createBindGroupLayout(this.#geometryLayout)
     this.materialLayout = device.createBindGroupLayout(this.#materialLayout)
     this.shadowMapLayout = device.createBindGroupLayout(this.#shadowMapLayout)
+    this.environmentLayout = device.createBindGroupLayout(this.#environmentLayout)
   }
 }

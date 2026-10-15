@@ -66,7 +66,7 @@ export class ShadowRenderPass {
 
   #initBuffer() {
     this.uniformBuffer = this.device.createBuffer({
-      size: 64 * 4 + 16 + 16,
+      size: 64 * 6,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       label: 'ShadowRenderPass Uniform Buffer'
     });
