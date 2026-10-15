@@ -2,6 +2,13 @@ import { Renderer } from "../renderer.js";
 import { Layouts } from "../rendering/layouts.js";
 import { Texture } from "./texture.js";
 
+/** @enum { number } */
+export const TransparencyType = {
+  OPAQUE: 0,
+  TRANSPARENT: 1,
+  CUTOUT: 2,
+}
+
 export class Material {
   /** @type { GPUTexture } */
   static FALLBACK_NORMAL_MAP;
@@ -23,6 +30,9 @@ export class Material {
 
   /** @type { GPUBindGroup } */
   bindGroup;
+
+  /** @type { TransparencyType } */
+  transparency
 
   /** @type { GPUBuffer } */
   #uniformBuffer;

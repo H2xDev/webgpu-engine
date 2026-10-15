@@ -4,6 +4,13 @@ import { TO_RAD } from '../utils.js';
 export class Entity3D {
   /** @type { ReturnType<mat4.create> } */
   transform = mat4.identity(mat4.create());
+
+  /** @type { Entity3D | null } */
+  parent = null;
+
+  /** @type { Entity3D[] } */
+  children = [];
+
   #position_ = vec3.create();
 
   /** @type { { x: number; y: number; z: number; } } */
@@ -80,6 +87,16 @@ export class Entity3D {
     return vec3.fromValues(this.transform[0], this.transform[1], this.transform[2]);
   }
 
+  get globalTransform() {
+    if (this.parent) {
+      const globalTransform = mat4.create();
+      mat4.multiply(globalTransform, this.parent.globalTransform, this.transform);
+      return globalTransform;
+    } else {
+      return this.transform;
+    }
+  }
+
   /**
     * @param { ReturnType<vec3.create> } axis
     * @param { number } angle
@@ -92,5 +109,26 @@ export class Entity3D {
     this.position = tempPosition;
   }
 
-  update(_dt) {}
+  /** @param { Entity3D } child */
+  addChild(child) {
+    if (child.parent) {
+      child.parent.removeChild(child);
+    }
+
+    child.parent = this;
+    this.children.push(child);
+  }
+
+  /** @param { Entity3D } child */
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index !== -1) {
+      child.parent = null;
+      this.children.splice(index, 1);
+    }
+  }
+
+  update(_dt) {
+    this.children.forEach(child => child.update(_dt));
+  }
 }

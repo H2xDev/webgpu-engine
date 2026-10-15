@@ -121,6 +121,7 @@ fn fragment_main(
   @location(4) world_pos: vec3<f32>
 ) -> @location(0) vec4<f32> {
   var normal_map_sample: vec3<f32> = textureSample(normalMap, normalMapSampler, uv).xyz;
+  normal_map_sample.y = 1.0 - normal_map_sample.y;
   normal_map_sample = normalize(normal_map_sample * 2.0 - 1.0);
   normal_map_sample.xy *= materialProperties.normalScale;
 
@@ -141,6 +142,7 @@ fn fragment_main(
     transformUBO.lightView[1].z,
     transformUBO.lightView[2].z
   );
+
   var normal_mapped: vec3<f32> = normalize(tbn * normal_map_sample);
   var lightness: f32 = max(0.25, dot(normalize(lightDirection), normal_mapped) * shadowValue);
 

@@ -2,9 +2,10 @@ import { mat4, vec3 } from "../gl-matrix/index.js";
 import { InputController } from "../inputController.js";
 
 import { TO_RAD } from "../utils.js";
-import { Entity3D } from "./entity_3d.js";
+import { Entity3D } from "./entity3d.js";
 
 export class Camera3D extends Entity3D {
+  /** @type { Camera3D } */
   static current;
 
   /** @type { ReturnType<mat4.create> } */
@@ -40,6 +41,7 @@ export class Camera3D extends Entity3D {
     }
   }
 
+  /** @param { number } dt */
   update(dt) {
     this.rotate([0, 1, 0], -InputController.mouseMovement[0] * 0.4);
     this.rotate(this.right, -InputController.mouseMovement[1] * 0.4);
@@ -53,5 +55,7 @@ export class Camera3D extends Entity3D {
 
     const movement = vec3.add(vec3.create(), forwardMovement, rightMovement);
     this.position = vec3.add(vec3.create(), this.position, movement);
+
+    super.update(dt);
   }
 }

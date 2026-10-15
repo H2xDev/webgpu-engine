@@ -1,7 +1,7 @@
 import { Renderer } from "../renderer.js";
 import { Mesh } from "../resources/mesh.js";
 import { Material } from "../resources/material.js";
-import { Entity3D } from "./entity_3d.js";
+import { Entity3D } from "./entity3d.js";
 
 export class MeshInstance extends Entity3D {
   /** @type { Mesh | null } */
@@ -23,7 +23,7 @@ export class MeshInstance extends Entity3D {
       indices: this.mesh.indexBuffer,
       vertexCount: this.mesh.vertexCount,
       indexCount: this.mesh.indexCount,
-      transform: this.transform,
+      transform: this.globalTransform,
       material: this.material,
       surfaces: this.mesh.surfaces,
     })

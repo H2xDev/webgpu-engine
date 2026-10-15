@@ -1,5 +1,6 @@
 import { Scene } from './nodes/scene.js'
 import { Renderer } from './renderer.js';
+import { InputController } from './inputController.js';
 
 export const SceneController = new class SceneController {
   /** @type { Scene | null } */
@@ -26,6 +27,7 @@ export const SceneController = new class SceneController {
     }
 
     Renderer.render();
+    InputController.update();
 
     requestAnimationFrame(this.beginLoop.bind(this));
   }
