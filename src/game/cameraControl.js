@@ -11,7 +11,7 @@ export class CameraControl extends Entity3D {
     const forwardSpeed = InputController.is_key_pressed("KeyW") ? 1 : InputController.is_key_pressed("KeyS") ? -1 : 0;
     const rightSpeed = InputController.is_key_pressed("KeyD") ? 1 : InputController.is_key_pressed("KeyA") ? -1 : 0;
 
-    const speed = 200.0 * dt;
+    const speed = 1000.0 * dt;
     const forwardMovement = vec3.scale(vec3.create(), this.forward, forwardSpeed * speed);
     const rightMovement = vec3.scale(vec3.create(), this.right, rightSpeed * speed);
 

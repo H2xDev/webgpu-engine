@@ -5,7 +5,7 @@ import { Camera3D } from './camera.js';
 export class DirectionalLight extends Camera3D {
   size = 20;
   distance = 10;
-  color = [1, 1, 1];
+  color = [2, 2, 2];
 
   /** @type { DirectionalLight } */
   static current = null;

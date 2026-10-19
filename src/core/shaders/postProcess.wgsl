@@ -1,35 +1,26 @@
+@binding(0) @group(0) var screenTexture: texture_2d<f32>;
+@binding(1) @group(0) var screenSampler: sampler;
 
-struct Fragment {
+@binding(0) @group(1) var glowTexture: texture_2d<f32>;
+@binding(1) @group(1) var glowSampler: sampler;
+
+const GLOW_THRESHOLD: f32 = 100.8;
+
+#include "fullscreenTriangle"
+
+// TODO: Should be a separate pass
+@fragment
+fn glow_pass(
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>
-}
+) -> @location(0) vec4<f32> {
+  var screenSample: vec4<f32> = textureSample(screenTexture, screenSampler, uv);
 
-@binding(0) @group(0) var screenTexture: texture_2d<f32>;
-@binding(0) @group(1) var screenSampler: sampler;
+  let point = 0.1;
+  let luminance: f32 = 0.2126 * screenSample.r + 0.7152 * screenSample.g + 0.0722 * screenSample.b;
+  let affect: f32 = smoothstep(point, 0.5 + point, luminance);
 
-// fullscreen triangle vertices and uvs
-const vertices = array<vec2<f32>, 3>(
-  vec2<f32>(-1.0, -1.0),
-  vec2<f32>(3.0, -1.0),
-  vec2<f32>(-1.0, 3.0)
-);
-
-const uvs = array<vec2<f32>, 3>(
-  vec2<f32>(0.0, 0.0),
-  vec2<f32>(2.0, 0.0),
-  vec2<f32>(0.0, 2.0)
-);
-
-@vertex
-fn vertex_main(
-  @builtin(vertex_index) vertexIndex: u32,
-) -> Fragment {
-  var output: Fragment;
-
-  output.position = vec4<f32>(vertices[vertexIndex], 0.0, 1.0);
-  output.uv = (uvs[vertexIndex] + vec2<f32>(1.0)) * 0.5;
-
-  return output;
+  return screenSample * affect;
 }
 
 @fragment
@@ -37,5 +28,8 @@ fn fragment_main(
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>
 ) -> @location(0) vec4<f32> {
-  return textureSample(screenTexture, screenSampler, uv);
+  let screenSample: vec4<f32> = textureSample(screenTexture, screenSampler, uv);
+  let glowSample: vec4<f32> = textureSample(glowTexture, glowSampler, uv);
+
+  return screenSample + glowSample;
 }

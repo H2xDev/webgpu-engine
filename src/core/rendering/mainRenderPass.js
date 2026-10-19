@@ -7,6 +7,7 @@ import { RenderPass } from "./renderPass.abstract.js";
 import { ShadowRenderPass } from "./shadowRenderPass.js";
 
 export class MainRenderPass extends RenderPass {
+  /** @type { MainRenderPass } */
   static instance = null;
 
   /** @type { Omit<GPUVertexState, 'module'> } */
@@ -80,10 +81,10 @@ export class MainRenderPass extends RenderPass {
   }
 
   async init() {
+    this.#initSceneTexture();
     this.#initDepthTexture();
     this.#initRenderPassDescriptor();
     this.#initBuffer();
-    this.#initSceneTexture();
     await this.#initPipeline();
 
     return super.init();
@@ -113,7 +114,7 @@ export class MainRenderPass extends RenderPass {
   }
 
   updateViewTexture() {
-    this.renderPassDescriptor.colorAttachments[0].view = this.context.getCurrentTexture().createView();
+    //this.renderPassDescriptor.colorAttachments[0].view = this.context.getCurrentTexture().createView();
   }
 
   /**
@@ -184,7 +185,7 @@ export class MainRenderPass extends RenderPass {
 
     this.renderPassDescriptor = {
       colorAttachments: [{
-        view: context.getCurrentTexture().createView(),
+        view: this.sceneTextureView,
         clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },
         loadOp: "load",
         storeOp: "store",

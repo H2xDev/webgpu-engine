@@ -3,6 +3,7 @@ import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
 import { RenderPass } from "./renderPass.abstract.js";
 import { Environment } from "../nodes/environment.js";
+import { MainRenderPass } from "./mainRenderPass.js";
 
 export class EnvironmentRenderPass extends RenderPass {
   /** @type { EnvironmentRenderPass } */
@@ -43,7 +44,7 @@ export class EnvironmentRenderPass extends RenderPass {
     /** @type { GPURenderPassDescriptor } */
     this.renderPassDescriptor = {
       colorAttachments: [{
-        view: this.context.getCurrentTexture().createView(),
+        view: MainRenderPass.instance.sceneTextureView,
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
         loadOp: 'clear',
         storeOp: 'store',
@@ -93,13 +94,11 @@ export class EnvironmentRenderPass extends RenderPass {
     if (!Environment.current) return;
     if (!Camera3D.current) return;
 
-    this.updateViewTexture();
-
     const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
     Camera3D.current.writeToBuffer(this.uniformBuffer);
     rp.setPipeline(this.pipeline);
     rp.setBindGroup(0, Environment.current.bindGroup);
-    rp.draw(4, 1, 0, 0);
+    rp.draw(3);
     rp.end();
   }
 }

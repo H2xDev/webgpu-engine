@@ -4,8 +4,10 @@ import { Texture } from "./resources/texture.js";
 import { RenderInfo } from "./resources/renderInfo.js";
 import { MainRenderPass } from "./rendering/mainRenderPass.js";
 import { ShadowRenderPass } from "./rendering/shadowRenderPass.js";
+import { PostProcessPass } from "./rendering/postProcessPass.js";
 import { Layouts } from "./rendering/layouts.js";
 import { EnvironmentRenderPass } from "./rendering/environmentRenderPass.js";
+import { KawaseBlur } from "./rendering/kawaseBlur.js";
 
 export const Renderer = new class Renderer {
   /** @type { GPUDevice } */
@@ -107,9 +109,12 @@ export const Renderer = new class Renderer {
   }
 
   async #initRenderPipeline() {
+    await KawaseBlur.init(this.device);
+
     this.shadowRenderPass = await new ShadowRenderPass(this.device, this.context).init();
     this.mainRenderPass = await new MainRenderPass(this.device, this.context).init();
     this.envRenderPass = await new EnvironmentRenderPass(this.device, this.context).init();
+    this.postProcessPass = await new PostProcessPass(this.device, this.context).init();
   }
 
   /**
@@ -121,6 +126,7 @@ export const Renderer = new class Renderer {
     this.envRenderPass.encode(commandEncoder);
     this.shadowRenderPass.encode(commandEncoder, this.#processRenderQueue.bind(this));
     this.mainRenderPass.encode(commandEncoder, this.#processRenderQueue.bind(this));
+    this.postProcessPass.encode(commandEncoder);
 
     this.device.queue.submit([ commandEncoder.finish() ]);
     this.clearRenderQueue();

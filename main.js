@@ -25,9 +25,10 @@ const MainScene = new class MainScene extends Scene {
     this.directionalLight.forward = vec3.normalize(vec3.create(), [0.7, -1, 0]);
     this.cameraControl.forward = vec3.normalize(vec3.create(), [1, -1, 0]);
     mat4.lookAt(this.cameraControl.transform, this.cameraControl.position, vec3.add(vec3.create(), this.cameraControl.position, [1, 0, 0]), [0, 1, 0]);
+
     const sponza = await ObjMesh.load("/sponza/sponza.obj");
 
-    this.meshInstance= new MeshInstance(sponza);
+    this.meshInstance = new MeshInstance(sponza);
     this.meshInstance.position = [0, 0, 0];
 
     this.addChild(this.meshInstance);
@@ -36,6 +37,9 @@ const MainScene = new class MainScene extends Scene {
     this.addChild(this.directionalLight);
   }
 
+  /**
+    * @param { number } dt
+    */
   update(dt) {
     this.directionalLight.rotate([0.0, 1, 0], 20 * dt);
 

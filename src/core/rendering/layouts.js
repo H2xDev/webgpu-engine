@@ -92,6 +92,22 @@ export const Layouts = new class Layouts {
     ]
   }
 
+  #postProcessLayout = {
+    label: 'Post Process Layout',
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {}
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {}
+      }
+    ]
+  }
+
   /** @type { GPUBindGroupLayout } */
   postProcessLayout;
 
@@ -111,9 +127,10 @@ export const Layouts = new class Layouts {
    * @param { GPUDevice } device
    */
   init(device) {
-    this.geometryLayout = device.createBindGroupLayout(this.#geometryLayout)
-    this.materialLayout = device.createBindGroupLayout(this.#materialLayout)
-    this.shadowMapLayout = device.createBindGroupLayout(this.#shadowMapLayout)
-    this.environmentLayout = device.createBindGroupLayout(this.#environmentLayout)
+    this.geometryLayout = device.createBindGroupLayout(this.#geometryLayout);
+    this.materialLayout = device.createBindGroupLayout(this.#materialLayout);
+    this.shadowMapLayout = device.createBindGroupLayout(this.#shadowMapLayout);
+    this.environmentLayout = device.createBindGroupLayout(this.#environmentLayout);
+    this.postProcessLayout = device.createBindGroupLayout(this.#postProcessLayout);
   }
 }
