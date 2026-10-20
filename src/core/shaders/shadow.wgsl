@@ -5,7 +5,7 @@ fn shadowPCF(
   depth: f32
 ) -> f32 {
   var shadow: f32 = 0.0;
-  let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0)) / 2.0;
+  let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0)) / 1.0;
 
   for (var x: f32 = -1; x <= 1; x = x + 0.5) {
     for (var y: f32 = -1; y <= 1; y = y + 0.5) {

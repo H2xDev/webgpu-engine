@@ -21,28 +21,33 @@ export const Layouts = new class Layouts {
   #materialLayout = {
     label: 'Material Layout',
     entries: [
-      { // Albedo texture
+      { // Albedo sampler
         binding: 0,
         visibility: GPUShaderStage.FRAGMENT,
-        texture: {},
+        sampler: {},
       },
-      { // Albedo sampler
+      { // Albedo texture
         binding: 1,
         visibility: GPUShaderStage.FRAGMENT,
-        sampler: {},
+        texture: {},
       },
       { // Normal map texture
         binding: 2,
         visibility: GPUShaderStage.FRAGMENT,
         texture: {},
       },
-      { // Normal map sampler
+      { // Roughness map texture
         binding: 3,
         visibility: GPUShaderStage.FRAGMENT,
-        sampler: {},
+        texture: {}
+      },
+      { // Metallic map texture
+        binding: 4,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {}
       },
       { // Material properties
-        binding: 4,
+        binding: 5,
         visibility: GPUShaderStage.FRAGMENT,
         buffer: {},
       },
@@ -84,6 +89,11 @@ export const Layouts = new class Layouts {
       },
       {
         binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {}
+      },
+      {
+        binding: 3,
         visibility: GPUShaderStage.FRAGMENT,
         buffer: {
           type: 'uniform',

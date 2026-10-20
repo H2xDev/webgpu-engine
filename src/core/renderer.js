@@ -8,6 +8,7 @@ import { PostProcessPass } from "./rendering/postProcessPass.js";
 import { Layouts } from "./rendering/layouts.js";
 import { EnvironmentRenderPass } from "./rendering/environmentRenderPass.js";
 import { KawaseBlur } from "./rendering/kawaseBlur.js";
+import { IrradianceMapGenerator } from "./utils/irradianceMapGenerator.js";
 
 export const Renderer = new class Renderer {
   /** @type { GPUDevice } */
@@ -110,6 +111,7 @@ export const Renderer = new class Renderer {
 
   async #initRenderPipeline() {
     await KawaseBlur.init(this.device);
+    IrradianceMapGenerator.init(this.device);
 
     this.shadowRenderPass = await new ShadowRenderPass(this.device, this.context).init();
     this.mainRenderPass = await new MainRenderPass(this.device, this.context).init();

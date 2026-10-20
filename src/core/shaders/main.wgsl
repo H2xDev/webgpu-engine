@@ -33,18 +33,20 @@ const PI: f32 = 3.1415926535897932384626433832795;
 @binding(0) @group(0) var<uniform> renderData: RenderData;
 @binding(1) @group(0) var<storage, read> object: ObjectData;
 
-@binding(0) @group(1) var albedo: texture_2d<f32>;
-@binding(1) @group(1) var albedoSampler: sampler;
-
+@binding(0) @group(1) var textureSampler: sampler;
+@binding(1) @group(1) var albedoTexture: texture_2d<f32>;
 @binding(2) @group(1) var normalMap: texture_2d<f32>;
-@binding(3) @group(1) var normalMapSampler: sampler;
-@binding(4) @group(1) var<uniform> materialProperties: MaterialProperties;
+@binding(3) @group(1) var roughnessMap: texture_2d<f32>;
+@binding(4) @group(1) var metallicMap: texture_2d<f32>;
+
+@binding(5) @group(1) var<uniform> materialProperties: MaterialProperties;
 
 @binding(0) @group(2) var shadowMap: texture_depth_2d;
 @binding(1) @group(2) var shadowMapSampler: sampler_comparison;
 
 @binding(0) @group(3) var environmentMap: texture_2d<f32>;
 @binding(1) @group(3) var environmentMapSampler: sampler;
+@binding(2) @group(3) var irradianceMap: texture_2d<f32>;
 @binding(2) @group(3) var<uniform> envData: EnvironmentData;
 
 
@@ -88,10 +90,13 @@ fn vertex_main(
 fn getEnvironmentColor(worldNormal: vec3<f32>) -> vec3<f32> {
   let u: f32 = 0.5 + atan2(worldNormal.z, worldNormal.x) / (2.0 * PI);
   let v: f32 = 0.5 - asin(worldNormal.y) / PI;
-  let white: vec3<f32> = vec3<f32>(1.0, 1.0, 1.0);
-  let env: vec3<f32> = textureSampleLevel(environmentMap, environmentMapSampler, vec2<f32>(u, v), 3.0).rgb;
+  return textureSample(environmentMap, environmentMapSampler, vec2<f32>(u, v)).rgb;
+}
 
-  return mix(white, env, envData.energy);
+fn getIrradiance(worldNormal: vec3<f32>) -> vec3<f32> {
+  let u: f32 = 0.5 + atan2(worldNormal.z, worldNormal.x) / (2.0 * PI);
+  let v: f32 = 0.5 - asin(worldNormal.y) / PI;
+  return textureSample(irradianceMap, environmentMapSampler, vec2<f32>(u, v)).rgb;
 }
 
 @fragment
@@ -102,7 +107,7 @@ fn fragment_main(
   @location(2) depthCoord: vec4<f32>,
   @location(3) worldPos: vec3<f32>
 ) -> @location(0) vec4<f32> {
-  var normalMapSample: vec3<f32> = textureSample(normalMap, normalMapSampler, uv).xyz;
+  var normalMapSample: vec3<f32> = textureSample(normalMap, textureSampler, uv).xyz;
   normalMapSample.y = 1.0 - normalMapSample.y;
   normalMapSample = normalize(normalMapSample * 2.0 - 1.0);
   normalMapSample.xy *= materialProperties.normalScale;
@@ -116,10 +121,12 @@ fn fragment_main(
   ));
 
   let surfaceNormal: vec3<f32> = normalize(tbn * normalMapSample);
-  let lightness: f32 = max(0.15, dot(lightDirection, surfaceNormal) * shadowValue);
+  let lightness: f32 = max(0.0, dot(lightDirection, surfaceNormal) * shadowValue);
 
-  var color: vec4<f32> = textureSample(albedo, albedoSampler, uv);
-  color.rgb *= lightness * renderData.directionalLight.color;
+  var albedo = textureSample(albedoTexture, textureSampler, uv).rgb;
+  let diffuseIBL = albedo * getIrradiance(surfaceNormal) / PI;
+  let directLight = albedo * renderData.directionalLight.color * lightness * shadowValue;
+  let color = diffuseIBL + directLight;
 
-  return color;
+  return vec4<f32>(color, 1.0);
 }

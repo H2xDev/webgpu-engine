@@ -61,6 +61,7 @@ export class EnvironmentRenderPass extends RenderPass {
   }
 
   async #initPipeline() {
+    const fullscreenTriangleModule = await ShaderManager.createModule('src/core/shaders/fullscreenTriangle', this.device);
     const shaderModule = await ShaderManager.createModule('src/core/shaders/environment', this.device);
 
     this.pipeline = this.device.createRenderPipeline({
@@ -70,7 +71,7 @@ export class EnvironmentRenderPass extends RenderPass {
         bindGroupLayouts: [Layouts.environmentLayout]
       }),
       vertex: {
-        module: shaderModule,
+        module: fullscreenTriangleModule,
         entryPoint: 'vertex_main',
       },
       fragment: {

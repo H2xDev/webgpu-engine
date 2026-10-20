@@ -1,6 +1,7 @@
 import { EnvironmentRenderPass } from "../rendering/environmentRenderPass.js";
 import { Texture } from "../resources/texture.js";
 import { Layouts } from "../rendering/layouts.js";
+import { IrradianceMapGenerator } from "../utils/irradianceMapGenerator.js";
 
 export class Environment {
   /** @type { Environment | null } */
@@ -8,6 +9,13 @@ export class Environment {
 
   /** @type { Texture } */
   panoramaTexture;
+
+  /** @type { GPUTextureView } */
+  irradianceMapView;
+
+  /** @type { GPUTexture } */
+  irradianceMap;
+
   #energy = 0.8;
 
   get energy() {
@@ -33,8 +41,14 @@ export class Environment {
     }
 
     this.panoramaTexture = panoramaTexture;
-    this.#initBindGroup();
     this.energy = this.#energy;
+    this.#initIrradianceMap();
+    this.#initBindGroup();
+  }
+
+  #initIrradianceMap() {
+    this.irradianceMap = IrradianceMapGenerator.generate(this.panoramaTexture.texture.createView());
+    this.irradianceMapView = this.irradianceMap.createView();
   }
 
   #initBindGroup() {
@@ -51,6 +65,10 @@ export class Environment {
         },
         {
           binding: 2,
+          resource: this.irradianceMapView,
+        },
+        {
+          binding: 3,
           resource: {
             buffer: EnvironmentRenderPass.instance.uniformBuffer,
             offset: 0,

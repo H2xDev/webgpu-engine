@@ -11,11 +11,10 @@ struct EnvironmentData {
 
 @binding(0) @group(0) var panoramaTexture: texture_2d<f32>;
 @binding(1) @group(0) var panoramaSampler: sampler;
-@binding(2) @group(0) var<uniform> envData: EnvironmentData;
+@binding(2) @group(0) var irradianceMap: texture_2d<f32>;
+@binding(3) @group(0) var<uniform> envData: EnvironmentData;
 
 const PI: f32 = 3.1415926535897932384626433832795;
-
-#include "fullscreenTriangle"
 
 @fragment
 fn fragment_main(

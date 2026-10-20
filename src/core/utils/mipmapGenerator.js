@@ -26,7 +26,7 @@ const SOURCE_CODE = /* wgsl */`
 `;
 
 export const MipmapGenerator  = new class MipmapGenerator {
-  /** @type { GPUPipeline } */
+  /** @type { GPUComputePipeline } */
   pipeline;
 
   /** @type { GPUDevice } */

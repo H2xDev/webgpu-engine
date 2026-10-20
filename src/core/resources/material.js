@@ -10,17 +10,11 @@ export const TransparencyType = {
 }
 
 export class Material {
-  /** @type { GPUTexture } */
-  static FALLBACK_NORMAL_MAP;
+  /** @type { GPUTextureView } */
+  static FALLBACK_TEXTURE;
 
   /** @type { GPUSampler } */
-  static FALLBACK_NORMAL_MAP_SAMPLER;
-
-  /** @type { GPUTexture } */
-  static FALLBACK_ALBEDO_MAP;
-
-  /** @type { GPUSampler } */
-  static FALLBACK_ALBEDO_MAP_SAMPLER;
+  static FALLBACK_SAMPLER;
 
   /** @type { Texture } */
   albedo;
@@ -38,6 +32,8 @@ export class Material {
   #uniformBuffer;
 
   #normalScale = 1.0;
+  #metallic = 0.0;
+  #roughness = 1.0;
 
   get normalScale() {
     return this.#normalScale;
@@ -48,50 +44,24 @@ export class Material {
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 0, new Float32Array([value]));
   }
 
-  static initFallbackNormalMap() {
-    if (Material.FALLBACK_NORMAL_MAP) return;
+  static initFallbackTexture() {
+    if (Material.FALLBACK_TEXTURE) return;
 
-    const fallbackNormalMapTexture = Renderer.device.createTexture({
+    const fallbackTexture = Renderer.device.createTexture({
       size: [1, 1, 1],
       format: 'rgba8unorm',
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
-    const fallbackNormalMapData = new Uint8Array([128, 128, 255, 255]);
     Renderer.device.queue.writeTexture(
-      { texture: fallbackNormalMapTexture },
-      fallbackNormalMapData,
+      { texture: fallbackTexture },
+      new Uint8Array([128, 128, 255, 255]),
       { bytesPerRow: 4 },
       { width: 1, height: 1, depthOrArrayLayers: 1 }
     );
 
-    Material.FALLBACK_NORMAL_MAP = fallbackNormalMapTexture;
-    Material.FALLBACK_NORMAL_MAP_SAMPLER = Renderer.device.createSampler({
-      magFilter: 'linear',
-      minFilter: 'linear',
-      mipmapFilter: 'linear',
-    });
-  }
-
-  static initFallbackAlbedo() {
-    if (Material.FALLBACK_ALBEDO_MAP) return;
-
-    const fallbackAlbedoMapTexture = Renderer.device.createTexture({
-      size: [1, 1, 1],
-      format: 'rgba8unorm',
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-    });
-
-    const fallbackAlbedoMapData = new Uint8Array([255, 255, 255, 255]);
-    Renderer.device.queue.writeTexture(
-      { texture: fallbackAlbedoMapTexture },
-      fallbackAlbedoMapData,
-      { bytesPerRow: 4 },
-      { width: 1, height: 1, depthOrArrayLayers: 1 }
-    );
-
-    Material.FALLBACK_ALBEDO_MAP = fallbackAlbedoMapTexture;
-    Material.FALLBACK_ALBEDO_MAP_SAMPLER = Renderer.device.createSampler({
+    Material.FALLBACK_TEXTURE = fallbackTexture.createView();
+    Material.FALLBACK_SAMPLER = Renderer.device.createSampler({
       magFilter: 'linear',
       minFilter: 'linear',
       mipmapFilter: 'linear',
@@ -106,8 +76,7 @@ export class Material {
     this.albedo = texture;
     this.normalMap = normalmap;
 
-    Material.initFallbackNormalMap();
-    Material.initFallbackAlbedo();
+    Material.initFallbackTexture();
 
     this.#initUniformBuffer();
     this.#initBindGroup();
@@ -122,29 +91,31 @@ export class Material {
         {
           binding: 0,
           resource: this.albedo
-            ? this.albedo.texture.createView()
-            : Material.FALLBACK_ALBEDO_MAP.createView(),
+            ? this.albedo.sampler
+            : Material.FALLBACK_SAMPLER,
         },
         {
           binding: 1,
           resource: this.albedo
-            ? this.albedo.sampler
-            : Material.FALLBACK_ALBEDO_MAP_SAMPLER,
+            ? this.albedo.texture.createView()
+            : Material.FALLBACK_TEXTURE,
         },
         {
           binding: 2,
           resource: this.normalMap
             ? this.normalMap.texture.createView()
-            : Material.FALLBACK_NORMAL_MAP.createView(),
+            : Material.FALLBACK_TEXTURE,
         },
         {
           binding: 3,
-          resource: this.normalMap
-            ? this.normalMap.sampler
-            : Material.FALLBACK_NORMAL_MAP_SAMPLER,
+          resource: Material.FALLBACK_TEXTURE,
         },
         {
           binding: 4,
+          resource: Material.FALLBACK_TEXTURE,
+        },
+        {
+          binding: 5,
           resource: {
             buffer: this.#uniformBuffer,
             offset: 0,
@@ -157,7 +128,7 @@ export class Material {
 
   #initUniformBuffer() {
     this.#uniformBuffer = Renderer.device.createBuffer({
-      size: 4,
+      size: 16,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
