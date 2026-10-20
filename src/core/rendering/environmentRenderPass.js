@@ -1,24 +1,18 @@
+import { Camera3D } from "../nodes/camera.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
+import { RenderPass } from "./renderPass.abstract.js";
+import { Environment } from "../nodes/environment.js";
 
-export class EnvironmentRenderPass {
+export class EnvironmentRenderPass extends RenderPass {
   /** @type { EnvironmentRenderPass } */
   static instance = null;
 
   /** @type { GPUBuffer } */
   uniformBuffer;
 
-  /** @type { GPUDevice } */
-  device;
-
   /** @type { GPUBindGroupLayout } */
   bindGroupLayout;
-
-  /** @type { GPURenderPipeline } */
-  pipeline;
-
-  /** @type { GPUCanvasContext } */
-  context;
 
   /** @type { GPURenderPassDescriptor } */
   renderPassDescriptor;
@@ -32,9 +26,9 @@ export class EnvironmentRenderPass {
       return EnvironmentRenderPass.instance;
     }
 
+    super(device, context);
+
     EnvironmentRenderPass.instance = this;
-    this.device = device;
-    this.context = context;
   }
 
   async init() {
@@ -92,5 +86,20 @@ export class EnvironmentRenderPass {
 
   updateViewTexture() {
     this.renderPassDescriptor.colorAttachments[0].view = this.context.getCurrentTexture().createView();
+  }
+
+  /** @param { GPUCommandEncoder } commandEncoder */
+  encode(commandEncoder) {
+    if (!Environment.current) return;
+    if (!Camera3D.current) return;
+
+    this.updateViewTexture();
+
+    const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
+    Camera3D.current.writeToBuffer(this.uniformBuffer);
+    rp.setPipeline(this.pipeline);
+    rp.setBindGroup(0, Environment.current.bindGroup);
+    rp.draw(4, 1, 0, 0);
+    rp.end();
   }
 }

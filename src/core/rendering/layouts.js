@@ -1,5 +1,3 @@
-import { Renderer } from "../renderer.js";
-
 export const Layouts = new class Layouts {
   #geometryLayout = {
     label: 'Geometry Layout',
@@ -93,6 +91,9 @@ export const Layouts = new class Layouts {
       }
     ]
   }
+
+  /** @type { GPUBindGroupLayout } */
+  postProcessLayout;
 
   /** @type { GPUBindGroupLayout } */
   materialLayout;

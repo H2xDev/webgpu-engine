@@ -1,7 +1,12 @@
+import { Camera3D } from "../nodes/camera.js";
+import { DirectionalLight } from "../nodes/directionalLight.js";
+import { Environment } from "../nodes/environment.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
+import { RenderPass } from "./renderPass.abstract.js";
+import { ShadowRenderPass } from "./shadowRenderPass.js";
 
-export class MainRenderPass {
+export class MainRenderPass extends RenderPass {
   static instance = null;
 
   /** @type { Omit<GPUVertexState, 'module'> } */
@@ -43,22 +48,16 @@ export class MainRenderPass {
   /** @type { GPUTextureView } */
   depthTextureView;
 
-  /** @type { GPUDevice } */
-  device;
+  /** @type { GPUTexture } */
+  sceneTexture;
 
-  /** @type { GPUCanvasContext } */
-  context;
-
-  /** @type { GPURenderPipeline } */
-  pipeline;
+  /** @type { GPUTextureView } */
+  sceneTextureView;
 
   /**
    * @type { GPUBindGroupLayout }
    */
   shaderBindGroupLayout = null;
-
-  /** @type { GPUBindGroupLayout } */
-  static materialBindGroupLayout;
 
   /** @type { GPUBindGroup } */
   shaderBindGroup = null;
@@ -72,6 +71,8 @@ export class MainRenderPass {
       return MainRenderPass.instance;
     }
 
+    super(device, context);
+
     this.device = device;
     this.context = context;
 
@@ -82,13 +83,92 @@ export class MainRenderPass {
     this.#initDepthTexture();
     this.#initRenderPassDescriptor();
     this.#initBuffer();
+    this.#initSceneTexture();
     await this.#initPipeline();
 
-    return this;
+    return super.init();
+  }
+
+  /** @param { GPUBuffer } objectBuffer */
+  assignObjectBuffer(objectBuffer) {
+    this.renderBindGroup = this.device.createBindGroup({
+      layout: Layouts.geometryLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: {
+            buffer: this.uniformBuffer,
+          }
+        },
+        {
+          binding: 1,
+          resource: {
+            buffer: objectBuffer,
+            offset: 0,
+            size: 64,
+          }
+        },
+      ],
+    });
   }
 
   updateViewTexture() {
     this.renderPassDescriptor.colorAttachments[0].view = this.context.getCurrentTexture().createView();
+  }
+
+  /**
+    * @param { GPUCommandEncoder } commandEncoder
+    * @param { (rp: GPURenderPassEncoder, bg: GPUBindGroup) => void } renderCallback
+    */
+  encode(commandEncoder, renderCallback) {
+    if (!ShadowRenderPass.instance) {
+      console.warn("ShadowRenderPass instance is not initialized. Skipping main render pass.");
+      return;
+    }
+
+    this.updateViewTexture();
+
+    /** @type { GPURenderPassEncoder } */
+    const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
+
+    Camera3D.current.writeToBuffer(this.uniformBuffer);
+
+    if (DirectionalLight.current) {
+      DirectionalLight.current.writeLightDataToBuffer(this.uniformBuffer, 64 * 3);
+    }
+
+    rp.setPipeline(this.pipeline);
+    rp.setBindGroup(2, ShadowRenderPass.instance.shadowMapBindGroup);
+
+    if (Environment.current) {
+      rp.setBindGroup(3, Environment.current.bindGroup);
+    }
+
+    renderCallback(rp, this.renderBindGroup);
+    rp.end();
+  }
+
+  #initSceneTexture() {
+    const { device, context } = this;
+    const { width, height } = context.canvas;
+
+    this.sceneTexture = device.createTexture({
+      size: [width, height, 1],
+      format: navigator.gpu.getPreferredCanvasFormat(),
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    this.sceneTextureView = this.sceneTexture.createView();
+
+    window.addEventListener("resize", () => {
+      this.sceneTexture.destroy();
+      this.sceneTexture = device.createTexture({
+        size: [window.innerWidth, window.innerHeight, 1],
+        format: navigator.gpu.getPreferredCanvasFormat(),
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+      });
+      this.sceneTextureView = this.sceneTexture.createView();
+    });
   }
 
   #initBuffer() {
@@ -140,29 +220,6 @@ export class MainRenderPass {
       this.depthTextureView = this.depthTexture.createView();
       this.renderPassDescriptor.depthStencilAttachment.view = this.depthTextureView;
     });
-  }
-
-  /**
-   *
-   * @param { GPUTextureView } shadowTextureView
-   * @param { GPUSampler } shadowSampler
-   */
-  initShadowBindGroup(shadowTextureView, shadowSampler) {
-    this.shadowBindGroup = this.device.createBindGroup({
-      layout: Layouts.shadowMapLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: shadowTextureView,
-        },
-        {
-          binding: 1,
-          resource: shadowSampler,
-        }
-      ],
-    })
-
-    return this;
   }
 
   async #initPipeline() {

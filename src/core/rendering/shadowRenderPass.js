@@ -1,8 +1,10 @@
+import { DirectionalLight } from "../nodes/directionalLight.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
 import { MainRenderPass } from "./mainRenderPass.js";
+import { RenderPass } from "./renderPass.abstract.js";
 
-export class ShadowRenderPass {
+export class ShadowRenderPass extends RenderPass {
   static instance = null;
 
   /** @type { GPURenderPassDescriptor } */
@@ -17,13 +19,16 @@ export class ShadowRenderPass {
   }
 
   /** @type { GPUBuffer } */
-  uniformBuffer
-
-  /** @type { GPUBindGroupLayout } */
-  bindGroupLayout
+  objectBuffer;
 
   /** @type { GPUBindGroup } */
-  bindGroup
+  renderBindGroup;
+
+  /** @type { GPUBuffer } */
+  uniformBuffer
+
+  /** @type { GPUBindGroup } */
+  shadowMapBindGroup
 
   /** @type { GPUTexture } */
   depthTexture
@@ -34,9 +39,6 @@ export class ShadowRenderPass {
   /** @type { GPUSampler } */
   depthTextureSampler;
 
-  /** @type { GPUDevice } */
-  device
-
   /** @type { GPURenderPipeline } */
   pipeline
 
@@ -45,23 +47,66 @@ export class ShadowRenderPass {
 
   /**
    * @param { GPUDevice } device
+   * @param { GPUCanvasContext } context
    */
-  constructor(device) {
+  constructor(device, context) {
     if (ShadowRenderPass.instance) {
       return ShadowRenderPass.instance;
     }
 
-    ShadowRenderPass.instance = this;
+    super(device, context);
 
-    this.device = device;
+    ShadowRenderPass.instance = this;
   }
 
   async init() {
     this.#initDepthTexture();
     this.#initBuffer();
+    this.#initBindGroup();
     await this.#initPipeline();
 
     return this;
+  }
+
+  /** @param { GPUBuffer } objectBuffer */
+  assignObjectBuffer(objectBuffer) {
+    this.renderBindGroup = this.device.createBindGroup({
+      layout: Layouts.geometryLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: {
+            buffer: this.uniformBuffer,
+          }
+        },
+        {
+          binding: 1,
+          resource: {
+            buffer: objectBuffer,
+            offset: 0,
+            size: 64,
+          }
+        },
+      ],
+    });
+  }
+
+  /**
+    * @param { GPUCommandEncoder } commandEncoder
+    * @param { (passEncoder: GPURenderPassEncoder, bg: GPUBindGroup) => void } renderCallback
+    */
+  encode(commandEncoder, renderCallback) {
+    if (!DirectionalLight.current) {
+      console.warn("No directional light found. Skipping shadow pass.");
+      return;
+    }
+
+    const shadowPass = commandEncoder.beginRenderPass(this.renderPassDescriptor);
+    DirectionalLight.current.writeToBuffer(this.uniformBuffer);
+
+    shadowPass.setPipeline(this.pipeline);
+    renderCallback(shadowPass, this.renderBindGroup);
+    shadowPass.end();
   }
 
   #initBuffer() {
@@ -69,6 +114,22 @@ export class ShadowRenderPass {
       size: 64 * 6,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       label: 'ShadowRenderPass Uniform Buffer'
+    });
+  }
+
+  #initBindGroup() {
+    this.shadowMapBindGroup = this.device.createBindGroup({
+      layout: Layouts.shadowMapLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: this.depthTextureView,
+        },
+        {
+          binding: 1,
+          resource: this.depthTextureSampler,
+        }
+      ]
     });
   }
 
