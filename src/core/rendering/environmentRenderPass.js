@@ -66,7 +66,7 @@ export class EnvironmentRenderPass {
   }
 
   async #initPipeline() {
-    const shaderModule = await ShaderManager.createModule('core/shaders/environment', this.device);
+    const shaderModule = await ShaderManager.createModule('src/core/shaders/environment', this.device);
 
     this.pipeline = this.device.createRenderPipeline({
       label: 'Environment Render Pipeline',

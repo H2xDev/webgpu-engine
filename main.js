@@ -18,7 +18,7 @@ const MainScene = new class MainScene extends Scene {
   meshInstance = new MeshInstance();
 
   async enter() {
-    const panoramaTexture = await Texture.load("/src/game/sky_12_2k.png");
+    const panoramaTexture = await Texture.load("/src/game/EveningSkyHDRI046B.png");
     const env = new Environment(panoramaTexture);
 
     this.cameraControl.position = [0, -100, 2];

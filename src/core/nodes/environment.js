@@ -8,7 +8,7 @@ export class Environment {
 
   /** @type { Texture } */
   panoramaTexture;
-  #energy = 1.0;
+  #energy = 0.8;
 
   get energy() {
     return this.#energy;
@@ -34,7 +34,7 @@ export class Environment {
 
     this.panoramaTexture = panoramaTexture;
     this.#initBindGroup();
-    this.energy = 1.0;
+    this.energy = this.#energy;
   }
 
   #initBindGroup() {

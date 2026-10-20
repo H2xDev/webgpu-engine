@@ -87,7 +87,7 @@ export class ShadowRenderPass {
   }
 
   async #initPipeline() {
-    const shaderModule = await ShaderManager.createModule("core/shaders/main", this.device);
+    const shaderModule = await ShaderManager.createModule("src/core/shaders/main", this.device);
 
     this.pipeline = this.device.createRenderPipeline({
       label: "ShadowRenderPass Pipeline",

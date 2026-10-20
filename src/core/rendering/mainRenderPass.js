@@ -168,7 +168,7 @@ export class MainRenderPass {
   async #initPipeline() {
     const { device } = this;
 
-    const shaderModule = await ShaderManager.createModule("core/shaders/main", device);
+    const shaderModule = await ShaderManager.createModule("src/core/shaders/main", device);
 
     this.pipeline = device.createRenderPipeline({
       label: "Main Render Pipeline",

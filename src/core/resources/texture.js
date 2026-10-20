@@ -50,9 +50,11 @@ export class Texture {
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(new Texture().init(image));
-      image.onerror = () => reject(new Error(`Failed to load texture "${url}"`));
+      image.onerror = (err) => {
+        console.error(err)
+        reject(new Error(`Failed to load texture "${url}"`));
+      };
       image.src = url;
     });
   }
 }
-
