@@ -121,11 +121,15 @@ export class Material {
       entries: [
         {
           binding: 0,
-          resource: this.albedo.texture.createView(),
+          resource: this.albedo
+            ? this.albedo.texture.createView()
+            : Material.FALLBACK_ALBEDO_MAP.createView(),
         },
         {
           binding: 1,
-          resource: this.albedo.sampler,
+          resource: this.albedo
+            ? this.albedo.sampler
+            : Material.FALLBACK_ALBEDO_MAP_SAMPLER,
         },
         {
           binding: 2,

@@ -4,8 +4,6 @@
 @binding(0) @group(1) var glowTexture: texture_2d<f32>;
 @binding(1) @group(1) var glowSampler: sampler;
 
-const GLOW_THRESHOLD: f32 = 100.8;
-
 @fragment
 fn fragment_main(
   @builtin(position) position: vec4<f32>,

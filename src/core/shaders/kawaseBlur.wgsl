@@ -6,8 +6,6 @@ struct BlurParams {
 @binding(1) @group(0) var inputSampler: sampler;
 @binding(2) @group(0) var<uniform> blurParams: BlurParams;
 
-#include "fullscreenTriangle"
-
 @fragment
 fn fragment_main(
   @builtin(position) position: vec4<f32>,

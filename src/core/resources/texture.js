@@ -1,4 +1,5 @@
 import { Renderer } from "../renderer.js";
+import { MipmapGenerator } from "../utils/mipmapGenerator.js";
 
 export class Texture {
   /** @type { GPUTexture } */
@@ -12,11 +13,21 @@ export class Texture {
     * @param { boolean } generateMipmaps
     */
   init(image, generateMipmaps = false) {
-    Renderer.device.queue.copyExternalImageToTexture(
-      { source: image },
-      { texture: this.#createTexture(image.width, image.height) },
-      [image.width, image.height]
-    );
+    // Renderer.device.queue.copyExternalImageToTexture(
+    //   { source: image },
+    //   { texture: this.#createTexture(image.width, image.height) },
+    //   [image.width, image.height]
+    // );
+
+    MipmapGenerator.init(Renderer.device);
+    this.texture = MipmapGenerator.generateMipmaps(image);
+    this.sampler = Renderer.device.createSampler({
+      minFilter: "linear",
+      magFilter: "linear",
+      mipmapFilter: "linear",
+      addressModeU: "repeat",
+      addressModeV: "repeat",
+    })
 
     return this;
   }
@@ -31,6 +42,7 @@ export class Texture {
       format: "rgba8unorm",
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     });
+
     this.sampler = Renderer.device.createSampler({
       magFilter: "linear",
       minFilter: "linear",

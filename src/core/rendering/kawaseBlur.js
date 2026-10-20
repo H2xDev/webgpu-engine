@@ -88,6 +88,7 @@ export const KawaseBlur = new class KawaseBlur {
       ]
     });
 
+    const fullScreenTriangleModule = await ShaderManager.createModule("src/core/shaders/fullScreenTriangle", this.device);
     const module = await ShaderManager.createModule("src/core/shaders/kawaseBlur", this.device);
 
     this.pipeline = this.device.createRenderPipeline({
@@ -95,7 +96,7 @@ export const KawaseBlur = new class KawaseBlur {
         bindGroupLayouts: [bindGroupLayout]
       }),
       vertex: {
-        module,
+        module: fullScreenTriangleModule,
         entryPoint: "vertex_main"
       },
       fragment: {

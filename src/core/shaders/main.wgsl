@@ -116,10 +116,10 @@ fn fragment_main(
   ));
 
   let surfaceNormal: vec3<f32> = normalize(tbn * normalMapSample);
-  let lightness: f32 = max(0.25, dot(lightDirection, surfaceNormal) * shadowValue);
+  let lightness: f32 = max(0.15, dot(lightDirection, surfaceNormal) * shadowValue);
 
   var color: vec4<f32> = textureSample(albedo, albedoSampler, uv);
-  color.rgb *= lightness * renderData.directionalLight.color * getEnvironmentColor(surfaceNormal);
+  color.rgb *= lightness * renderData.directionalLight.color;
 
   return color;
 }
