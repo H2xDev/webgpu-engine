@@ -5,8 +5,10 @@ import { InputController } from '../core/inputController.js';
 export class CameraControl extends Entity3D {
   /** @param { number } dt */
   update(dt) {
-    this.rotate([0, 1, 0], -InputController.mouseMovement[0] * 0.4);
-    this.rotate(this.right, -InputController.mouseMovement[1] * 0.4);
+    if (InputController.is_lmb_pressed) {
+      this.rotate([0, 1, 0], -InputController.mouseMovement[0] * 0.4);
+      this.rotate(this.right, -InputController.mouseMovement[1] * 0.4);
+    }
 
     const forwardSpeed = InputController.is_key_pressed("KeyW") ? 1 : InputController.is_key_pressed("KeyS") ? -1 : 0;
     const rightSpeed = InputController.is_key_pressed("KeyD") ? 1 : InputController.is_key_pressed("KeyA") ? -1 : 0;

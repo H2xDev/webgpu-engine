@@ -1,10 +1,8 @@
 import { ShaderManager } from "../shaderManager.js";
-import { KawaseBlur } from "./kawaseBlur.js";
 import { Layouts } from "./layouts.js";
 import { MainRenderPass } from "./mainRenderPass.js";
 import { RenderPass } from "./renderPass.abstract.js";
-
-const GLOW_TEXTURE_FORMAT = "rgba16float";
+import { GlowPass } from './glowPass.js';
 
 export class PostProcessPass extends RenderPass {
   /** @type { PostProcessPass } */
@@ -23,12 +21,6 @@ export class PostProcessPass extends RenderPass {
       storeOp: 'store',
     }]
   }
-
-  /** @type { GPUTextureView } */
-  glowTextureView;
-
-  /** @type { GPUTexture } */
-  glowTexture;
 
   /** @type { GPURenderPipeline } */
   glowPipeline;
@@ -51,27 +43,10 @@ export class PostProcessPass extends RenderPass {
 
   async init() {
     this.#initBindGroup();
-    this.#initGlowTexture();
     await this.#initPipeline();
+    await GlowPass.init(this.device, this.context);
 
     return super.init();
-  }
-
-  // TODO: Refactor this method
-  #initGlowTexture() {
-    const downScale = 4;
-    this.glowTexture = this.device.createTexture({
-      size: [this.context.canvas.width / downScale, this.context.canvas.height / downScale],
-      format: GLOW_TEXTURE_FORMAT,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
-    });
-
-    this.glowTextureView = this.glowTexture.createView();
-
-    window.addEventListener("resize", () => {
-      this.glowTexture.destroy();
-      this.#initGlowTexture();
-    }, { once: true })
   }
 
   #initBindGroup() {
@@ -93,9 +68,12 @@ export class PostProcessPass extends RenderPass {
   }
 
   async #initPipeline() {
+    const vertexShader = await ShaderManager.createModule("src/core/shaders/fullscreenTriangle", this.device);
+    const fragmentShader = await ShaderManager.createModule("src/core/shaders/postProcess", this.device);
+
     const vertex = {
-      module: await ShaderManager.createModule("src/core/shaders/postProcess", this.device),
       entryPoint: "vertex_main",
+      module: vertexShader,
     }
 
     const glowLayout = this.device.createBindGroupLayout({
@@ -113,24 +91,6 @@ export class PostProcessPass extends RenderPass {
       ]
     });
 
-    this.glowBindGroup = this.device.createBindGroup({
-      layout: glowLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: this.glowTextureView,
-        },
-        {
-          binding: 1,
-          resource: this.device.createSampler({
-            label: 'Glow Sampler',
-            magFilter: 'linear',
-            minFilter: 'linear',
-          }),
-        },
-      ],
-    });
-
     this.pipeline = this.device.createRenderPipeline({
       layout: this.device.createPipelineLayout({
         bindGroupLayouts: [
@@ -140,23 +100,10 @@ export class PostProcessPass extends RenderPass {
       }),
       vertex,
       fragment: {
-        module: vertex.module,
+        module: fragmentShader,
         entryPoint: "fragment_main",
         targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
       },
-    });
-
-    this.glowPipeline = this.device.createRenderPipeline({
-      label: "Glow Render Pipeline",
-      layout: this.device.createPipelineLayout({
-        bindGroupLayouts: [Layouts.postProcessLayout],
-      }),
-      vertex,
-      fragment: {
-        module: vertex.module,
-        entryPoint: "glow_pass",
-        targets: [{ format: GLOW_TEXTURE_FORMAT }],
-      }
     });
   }
 
@@ -171,18 +118,10 @@ export class PostProcessPass extends RenderPass {
     let rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
     rp.setPipeline(this.pipeline);
     rp.setBindGroup(0, this.bindGroup);
-    rp.setBindGroup(1, this.glowBindGroup)
+    rp.setBindGroup(1, GlowPass.bindGroup);
     rp.draw(3);
     rp.end();
 
-    this.renderPassDescriptor.colorAttachments[0].view = this.glowTextureView;
-    rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
-    rp.setPipeline(this.glowPipeline)
-    rp.setBindGroup(0, this.bindGroup)
-    rp.draw(3);
-    rp.end();
-
-    KawaseBlur.setTextureSize(this.glowTexture.width, this.glowTexture.height);
-    KawaseBlur.processTexture(commandEncoder, this.glowTextureView);
+    GlowPass.encode(commandEncoder, this.bindGroup)
   }
 }

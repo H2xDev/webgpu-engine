@@ -6,23 +6,6 @@
 
 const GLOW_THRESHOLD: f32 = 100.8;
 
-#include "fullscreenTriangle"
-
-// TODO: Should be a separate pass
-@fragment
-fn glow_pass(
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>
-) -> @location(0) vec4<f32> {
-  var screenSample: vec4<f32> = textureSample(screenTexture, screenSampler, uv);
-
-  let point = 0.1;
-  let luminance: f32 = 0.2126 * screenSample.r + 0.7152 * screenSample.g + 0.0722 * screenSample.b;
-  let affect: f32 = smoothstep(point, 0.5 + point, luminance);
-
-  return screenSample * affect;
-}
-
 @fragment
 fn fragment_main(
   @builtin(position) position: vec4<f32>,

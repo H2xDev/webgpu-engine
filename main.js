@@ -21,10 +21,9 @@ const MainScene = new class MainScene extends Scene {
     const panoramaTexture = await Texture.load("/src/game/EveningSkyHDRI046B.png");
     const env = new Environment(panoramaTexture);
 
-    this.cameraControl.position = [0, -100, 2];
+    this.cameraControl.position = [0, -2000, 2];
     this.directionalLight.forward = vec3.normalize(vec3.create(), [0.7, -1, 0]);
-    this.cameraControl.forward = vec3.normalize(vec3.create(), [1, -1, 0]);
-    mat4.lookAt(this.cameraControl.transform, this.cameraControl.position, vec3.add(vec3.create(), this.cameraControl.position, [1, 0, 0]), [0, 1, 0]);
+    mat4.lookAt(this.cameraControl.transform, this.cameraControl.position, vec3.add(vec3.create(), this.cameraControl.position, [-1, 0, 0]), [0, 1, 0]);
 
     const sponza = await ObjMesh.load("/sponza/sponza.obj");
 
