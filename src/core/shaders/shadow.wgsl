@@ -5,21 +5,25 @@ fn shadowPCF(
   depth: f32
 ) -> f32 {
   var shadow: f32 = 0.0;
-  let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0)) / 1.0;
+  let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0));
 
-  for (var x: f32 = -1; x <= 1; x = x + 0.5) {
-    for (var y: f32 = -1; y <= 1; y = y + 0.5) {
+  let radius: i32 = 3;
+  var count: f32 = 0.0;
+
+  for (var x: i32 = -radius; x <= radius; x++) {
+    for (var y: i32 = -radius; y <= radius; y++) {
       let offset: vec2<f32> = vec2<f32>(f32(x), f32(y)) * texel_size;
       shadow += textureSampleCompare(
         shadowMap,
         shadowMapSampler,
         uv + offset,
-        depth - 0.0001
+        depth - 0.001
       );
+      count += 1.0;
     }
   }
 
-  return shadow / 18.0;
+  return shadow / count;
 }
 
 fn getShadowValue(

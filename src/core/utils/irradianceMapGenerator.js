@@ -58,7 +58,7 @@ const SOURCE_CODE = /* wgsl */`
         let y = cos(theta);
         let z = sin(theta) * sin(phi);
 
-        let sampleDir: vec3<f32> = normalize(tbn * vec3<f32>(x, y, z));
+        let sampleDir: vec3<f32> = normalize(tbn * vec3<f32>(x, z, y));
         irradiance += samplePanorama(sampleDir).xyz * cos(theta) * sin(theta) * sampleDelta * sampleDelta;
       }
     }
