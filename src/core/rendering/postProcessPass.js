@@ -51,6 +51,7 @@ export class PostProcessPass extends RenderPass {
 
   #initBindGroup() {
     this.sceneView = MainRenderPass.instance.sceneTextureView;
+    this.depthView = MainRenderPass.instance.depthTextureView;
     this.bindGroup = this.device.createBindGroup({
       layout: Layouts.postProcessLayout,
       entries: [
@@ -62,6 +63,10 @@ export class PostProcessPass extends RenderPass {
           binding: 1,
           resource: this.device.createSampler({ label: 'Post Process Sampler' }),
         },
+        {
+          binding: 2,
+          resource: MainRenderPass.instance.depthTextureView,
+        }
       ],
     });
   }
@@ -75,26 +80,13 @@ export class PostProcessPass extends RenderPass {
       module: vertexShader,
     }
 
-    const glowLayout = this.device.createBindGroupLayout({
-        entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.FRAGMENT,
-            texture: {}
-          },
-          {
-            binding: 1,
-            visibility: GPUShaderStage.FRAGMENT,
-            sampler: {}
-          }
-      ]
-    });
-
     this.pipeline = this.device.createRenderPipeline({
+      label: "Post Process Pipeline",
       layout: this.device.createPipelineLayout({
+        label: "Post Process Pipeline Layout",
         bindGroupLayouts: [
           Layouts.postProcessLayout,
-          glowLayout,
+          Layouts.glowLayout,
         ],
       }),
       vertex,
@@ -112,7 +104,10 @@ export class PostProcessPass extends RenderPass {
 
   /** @param { GPUCommandEncoder } commandEncoder */
   encode(commandEncoder) {
-    if (this.sceneView !== MainRenderPass.instance.sceneTextureView) {
+    if (
+      this.sceneView !== MainRenderPass.instance.sceneTextureView ||
+      this.depthView !== MainRenderPass.instance.depthTextureView
+    ) {
       this.#initBindGroup();
     }
 

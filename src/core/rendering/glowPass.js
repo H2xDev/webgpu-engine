@@ -1,5 +1,6 @@
 import { ShaderManager } from "../shaderManager.js";
 import { KawaseBlur } from "./kawaseBlur.js";
+import { Layouts } from "./layouts.js";
 
 export const GlowPass = new class GlowPass {
   /** @type { GPURenderPipeline } */
@@ -23,9 +24,6 @@ export const GlowPass = new class GlowPass {
   /** @type { GPUCanvasContext } */
   context
 
-  /** @type { GPUBindGroupLayout } */
-  bindGroupLayout;
-
   /** @type { GPUBindGroup } */
   bindGroup;
 
@@ -40,27 +38,14 @@ export const GlowPass = new class GlowPass {
     const vertexShader = await ShaderManager.createModule("src/core/shaders/fullscreenTriangle", device);
     const fragmentShader = await ShaderManager.createModule("src/core/shaders/glowPass", device);
 
-    this.bindGroupLayout = this.device.createBindGroupLayout({
-      label: 'Glow Pass Bind Group Layout',
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          texture: {}
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.FRAGMENT,
-          sampler: {},
-        }
-      ]
-    })
-
+    // Group 0 receives the post-process bind group (screen texture)
     const layout = this.device.createPipelineLayout({
-      bindGroupLayouts: [this.bindGroupLayout],
+      label: 'Glow Pass Pipeline Layout',
+      bindGroupLayouts: [Layouts.postProcessLayout],
     })
 
     this.pipeline = this.device.createRenderPipeline({
+      label: 'Glow Pass Pipeline',
       layout,
       vertex: {
         module: vertexShader,
@@ -107,7 +92,7 @@ export const GlowPass = new class GlowPass {
 
   // TODO: Refactor this method
   #initGlowTexture() {
-    const downScale = 16;
+    const downScale = 8;
     this.glowTexture = this.device.createTexture({
       size: [this.context.canvas.width / downScale, this.context.canvas.height / downScale],
       format: 'rgba16float',
@@ -123,16 +108,16 @@ export const GlowPass = new class GlowPass {
     this.renderPassDescriptor.colorAttachments[0].view = this.glowTextureView;
 
     this.bindGroup = this.device.createBindGroup({
-      layout: this.bindGroupLayout,
+      layout: Layouts.glowLayout,
       entries: [
         {
           binding: 0,
-          resource: this.glowTexture,
+          resource: this.glowTextureView,
         },
         {
           binding: 1,
           resource: this.sampler,
-        }
+        },
       ]
     });
 

@@ -7,8 +7,10 @@ fn main(
   @location(0) uv: vec2<f32>
 ) -> @location(0) vec4<f32> {
   let color = textureSample(screenTexture, screenSampler, uv).rgb;
-  let threshold = 0.8;
-  let knee = 0.5;
+
+  // TODO: Make these parameters configurable
+  let threshold = 2.5;
+  let knee = 0.1;
 
   let luminance = dot(color, vec3f(0.2126, 0.7152, 0.0722));
   let soft = clamp(luminance - threshold + knee, 0.0, 2.0 * knee);

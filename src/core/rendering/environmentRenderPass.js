@@ -77,7 +77,7 @@ export class EnvironmentRenderPass extends RenderPass {
       fragment: {
         module: shaderModule,
         entryPoint: 'fragment_main',
-        targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }]
+        targets: [{ format: "rgba16float" }]
       },
       primitive: {
         topology: 'triangle-strip',

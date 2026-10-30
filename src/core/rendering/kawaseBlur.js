@@ -1,6 +1,6 @@
 import { ShaderManager } from "../shaderManager.js";
 
-const MAX_PASSES = 5;
+const MAX_PASSES = 7;
 
 export const KawaseBlur = new class KawaseBlur {
   /** @type { Map<GPUTextureView, GPUBindGroup> } */

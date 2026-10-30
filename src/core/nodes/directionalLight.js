@@ -16,9 +16,10 @@ export class DirectionalLight extends Camera3D {
   constructor(size) {
     super();
     this.size = size || this.size;
-    const half = this.size * 100;
-    this.distance = half;
-    this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, 0.00000001, half * 3);
+    const half = this.size / 2;
+    this.distance = this.size;
+    // Light sits `distance` behind the camera, so depth range is centered on the camera position
+    this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, 0.0001, this.distance * 2);
 
     if (!DirectionalLight.current) {
       DirectionalLight.current = this;

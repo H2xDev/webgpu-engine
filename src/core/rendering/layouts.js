@@ -114,12 +114,38 @@ export const Layouts = new class Layouts {
         binding: 1,
         visibility: GPUShaderStage.FRAGMENT,
         sampler: {}
-      }
+      },
+      {
+        binding: 2,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {
+          sampleType: 'depth',
+        }
+      },
+    ]
+  }
+
+  #glowLayout = {
+    label: 'Glow Pass Bind Group Layout',
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        texture: {}
+      },
+      {
+        binding: 1,
+        visibility: GPUShaderStage.FRAGMENT,
+        sampler: {}
+      },
     ]
   }
 
   /** @type { GPUBindGroupLayout } */
   postProcessLayout;
+
+  /** @type { GPUBindGroupLayout } */
+  glowLayout;
 
   /** @type { GPUBindGroupLayout } */
   materialLayout;
@@ -142,5 +168,6 @@ export const Layouts = new class Layouts {
     this.shadowMapLayout = device.createBindGroupLayout(this.#shadowMapLayout);
     this.environmentLayout = device.createBindGroupLayout(this.#environmentLayout);
     this.postProcessLayout = device.createBindGroupLayout(this.#postProcessLayout);
+    this.glowLayout = device.createBindGroupLayout(this.#glowLayout);
   }
 }

@@ -155,7 +155,7 @@ export class MainRenderPass extends RenderPass {
 
     this.sceneTexture = device.createTexture({
       size: [width, height, 1],
-      format: navigator.gpu.getPreferredCanvasFormat(),
+      format: "rgba16float",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
 
@@ -165,7 +165,7 @@ export class MainRenderPass extends RenderPass {
       this.sceneTexture.destroy();
       this.sceneTexture = device.createTexture({
         size: [window.innerWidth, window.innerHeight, 1],
-        format: navigator.gpu.getPreferredCanvasFormat(),
+        format: "rgba16float",
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this.sceneTextureView = this.sceneTexture.createView();
@@ -196,7 +196,7 @@ export class MainRenderPass extends RenderPass {
         view: this.depthTextureView,
         depthClearValue: 1.0,
         depthLoadOp: "clear",
-        depthStoreOp: "discard",
+        depthStoreOp: "store",
       },
     };
   }
@@ -208,7 +208,7 @@ export class MainRenderPass extends RenderPass {
     this.depthTexture = device.createTexture({
       size: [width, height, 1],
       format: "depth24plus",
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
 
     this.depthTextureView = this.depthTexture.createView();
@@ -218,7 +218,7 @@ export class MainRenderPass extends RenderPass {
       this.depthTexture = device.createTexture({
         size: [window.innerWidth, window.innerHeight, 1],
         format: "depth24plus",
-        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this.depthTextureView = this.depthTexture.createView();
       this.renderPassDescriptor.depthStencilAttachment.view = this.depthTextureView;
@@ -247,7 +247,7 @@ export class MainRenderPass extends RenderPass {
       fragment: {
         module: shaderModule,
         entryPoint: "fragment_main",
-        targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }]
+        targets: [{ format: "rgba16float" }]
       },
       primitive: {
         topology: "triangle-list",

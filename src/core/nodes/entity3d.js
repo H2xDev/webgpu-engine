@@ -87,6 +87,21 @@ export class Entity3D {
     return vec3.fromValues(this.transform[0], this.transform[1], this.transform[2]);
   }
 
+  get globalRight() {
+    const globalTransform = this.globalTransform;
+    return vec3.fromValues(globalTransform[0], globalTransform[1], globalTransform[2]);
+  }
+
+  get globalUp() {
+    const globalTransform = this.globalTransform;
+    return vec3.fromValues(globalTransform[4], globalTransform[5], globalTransform[6]);
+  }
+
+  get globalForward() {
+    const globalTransform = this.globalTransform;
+    return vec3.fromValues(-globalTransform[8], -globalTransform[9], -globalTransform[10]);
+  }
+
   get globalTransform() {
     if (this.parent) {
       const globalTransform = mat4.create();
@@ -117,6 +132,8 @@ export class Entity3D {
 
     child.parent = this;
     this.children.push(child);
+
+    return child;
   }
 
   /** @param { Entity3D } child */

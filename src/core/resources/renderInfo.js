@@ -1,3 +1,4 @@
+import { AABB } from "./aabb.js";
 import { Material } from "./material.js";
 import { MeshSurface } from "./mesh.js";
 
@@ -19,6 +20,9 @@ export class RenderInfo {
 
   /** @type {MeshSurface[]} */
   surfaces = [];
+
+  /** @type {AABB} */
+  aabb;
 
   /** @type {Material | null} */
   material = null;

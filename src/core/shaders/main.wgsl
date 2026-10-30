@@ -29,6 +29,8 @@ struct MaterialProperties {
   albedoTint: vec3<f32>,
   metallic: f32,
   roughness: f32,
+  emissionTint: vec3<f32>,
+  emissionEnergy: f32,
 }
 
 const PI: f32 = 3.1415926535897932384626433832795;
@@ -173,9 +175,9 @@ fn PBR(
 
   let diffuseIBL = Kd * albedo * getIrradiance(N);
   let environment = RAF * getEnvironmentColor(R, (1.0 - roughness) * 10.0);
-  let lighting = (BRDF * lightColor * max(dot(L, N), 0.0) + environment) * shadowFactor;
+  let lighting = BRDF * lightColor * max(dot(L, N), 0.0) * shadowFactor + environment;
 
-  return emission + diffuseIBL + lighting;
+  return emission * materialProperties.emissionEnergy + diffuseIBL + lighting;
 }
 
 @fragment
@@ -210,7 +212,7 @@ fn fragment_main(
     albedo,
     roughness * materialProperties.roughness,
     metallic * materialProperties.metallic,
-    emissive,
+    emissive + materialProperties.emissionTint,
     shadowFactor,
   );
 

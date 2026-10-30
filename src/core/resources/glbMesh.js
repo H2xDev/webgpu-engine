@@ -165,8 +165,6 @@ export class GlbMesh extends Mesh {
       material.metallic = def.pbrMetallicRoughness?.metallicFactor ?? 1.0;
       material.roughness = def.pbrMetallicRoughness?.roughnessFactor ?? 1.0;
 
-      console.log(def);
-
       materials.set(index, material);
     }
 

@@ -47,6 +47,8 @@ export class Material {
   #metallic = 1.0;
   #roughness = 1.0;
   #albedoTint = [1.0, 1.0, 1.0];
+  #emissionTint = [0.0, 0.0, 0.0];
+  #emissionEnergy = 1.0;
 
   get normalScale() {
     return this.#normalScale;
@@ -82,6 +84,24 @@ export class Material {
   set roughness(value) {
     this.#roughness = value;
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 32, new Float32Array([value]));
+  }
+
+  get emissionTint() {
+    return this.#emissionTint;
+  }
+
+  set emissionTint(value) {
+    this.#emissionTint = value;
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 48, new Float32Array(value));
+  }
+
+  get emissionEnergy() {
+    return this.#emissionEnergy;
+  }
+
+  set emissionEnergy(value) {
+    this.#emissionEnergy = value;
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 60, new Float32Array([value]));
   }
 
   static initFallbackTexture() {
@@ -157,10 +177,27 @@ export class Material {
 
     Material.initFallbackTexture();
 
-    this.#initUniformBuffer();
+    this.initUniformBuffer();
     this.#initBindGroup();
 
     return this;
+  }
+
+  duplicate() {
+    return Object.assign(new Material().initUniformBuffer(), {
+      bindGroup: this.bindGroup,
+      albedo: this.albedo,
+      normalMap: this.normalMap,
+      ormMap: this.ormMap,
+      emissionMap: this.emissionMap,
+      transparency: this.transparency,
+      normalScale: this.#normalScale,
+      metallic: this.#metallic,
+      roughness: this.#roughness,
+      albedoTint: [...this.#albedoTint],
+      emissionTint: [...this.#emissionTint],
+      emissionEnergy: this.#emissionEnergy,
+    })
   }
 
   #initBindGroup() {
@@ -208,7 +245,7 @@ export class Material {
     });
   }
 
-  #initUniformBuffer() {
+  initUniformBuffer() {
     this.#uniformBuffer = Renderer.device.createBuffer({
       size: 80,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -218,5 +255,9 @@ export class Material {
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 16, new Float32Array(this.#albedoTint));
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 28, new Float32Array([this.#metallic]));
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 32, new Float32Array([this.#roughness]));
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 48, new Float32Array(this.#emissionTint));
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 60, new Float32Array([this.#emissionEnergy]));
+
+    return this;
   }
 }
