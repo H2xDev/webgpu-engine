@@ -1,6 +1,7 @@
 import { assert } from "../utils.js";
 import { Renderer } from "../renderer.js";
 import { Material } from "./material.js";
+import { AABB } from "./aabb.js";
 
 export class MeshSurface {
   offset = 0;
@@ -17,6 +18,8 @@ export class Mesh {
 
   /** @type { MeshSurface[] } */
   surfaces = [];
+
+  aabb = new AABB();
 
   /** @type { GPUVertexBufferLayout } */
   vertexBufferLayout = {

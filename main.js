@@ -10,39 +10,54 @@ import { DirectionalLight } from "./src/core/nodes/directionalLight.js";
 import { CameraControl } from "./src/game/cameraControl.js";
 import { Texture } from "./src/core/resources/texture.js";
 import { Environment } from "./src/core/nodes/environment.js";
+import { GlbMesh } from "./src/core/resources/glbMesh.js";
+import { OrbitControl } from "./src/core/nodes/orbitControl.js";
 
 const MainScene = new class MainScene extends Scene {
   camera = new Camera3D();
-  cameraControl = new CameraControl();
-  directionalLight = new DirectionalLight(20);
+  cameraControl = new OrbitControl();
   meshInstance = new MeshInstance();
+  /** @type { DirectionalLight } */
+  directionalLight;
+
+  defineDirectionalLight() {
+    this.directionalLight = new DirectionalLight(0.01);
+    this.directionalLight.position = [0, 0, 0];
+    this.directionalLight.forward = vec3.normalize(vec3.create(), [-1, -1, -1]);
+    this.addChild(this.directionalLight);
+  }
 
   async enter() {
-    const panoramaTexture = await Texture.load("/src/game/EveningSkyHDRI046B.png");
+    const panoramaTexture = await Texture.load("/src/game/IndoorEnvironmentHDRI005_2K_HDR.exr");
+    const sponza = await GlbMesh.load("/queen_of_swords/silent_ash.glb");
+
     const env = new Environment(panoramaTexture);
+    env.energy = 2.0;
 
-    this.cameraControl.position = [0, -2000, 2];
-    this.directionalLight.forward = vec3.normalize(vec3.create(), [0.7, -1, 0]);
-    mat4.lookAt(this.cameraControl.transform, this.cameraControl.position, vec3.add(vec3.create(), this.cameraControl.position, [-1, 0, 0]), [0, 1, 0]);
+    this.defineDirectionalLight();
 
-    const sponza = await ObjMesh.load("/sponza/sponza.obj");
+    this.camera.fov = 20;
 
     this.meshInstance = new MeshInstance(sponza);
-    this.meshInstance.position = [0, 0, 0];
+    this.meshInstance.position = vec3.scale(vec3.create(), sponza.aabb.getCenter(), -1);
+
+    const halfFov = (this.camera.fov * Math.PI / 180) / 2;
+    this.cameraControl.distance = Math.max(...sponza.aabb.getSize()) / 2 / Math.tan(halfFov);
 
     this.addChild(this.meshInstance);
     this.cameraControl.addChild(this.camera);
     this.addChild(this.cameraControl);
-    this.addChild(this.directionalLight);
   }
 
   /**
     * @param { number } dt
     */
   update(dt) {
-    this.directionalLight.rotate([0.0, 1, 0], 20 * dt);
-
     super.update(dt);
+
+    if (this.directionalLight) {
+      this.directionalLight.rotate([0.0, 1, 0], 20 * dt);
+    }
   }
 }
 

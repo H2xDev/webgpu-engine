@@ -12,7 +12,17 @@ export class Camera3D extends Entity3D {
   projection = mat4.create();
 
   /** @type { number } */
-  fov = 75;
+  fov_ = 75;
+
+
+  get fov() {
+    return this.fov_;
+  }
+
+  set fov(value) {
+    this.fov_ = value;
+    mat4.perspective(this.projection, TO_RAD * this.fov_, this.aspect, this.near, this.far);
+  }
 
   /** @type { number } */
   aspect = window.innerWidth / window.innerHeight;

@@ -63,6 +63,8 @@ const SOURCE_CODE = /* wgsl */`
       }
     }
 
+    irradiance /= PI;
+
     textureStore(outputTexture, vec2<i32>(id.xy), vec4<f32>(irradiance, 1.0));
   }
 `;
@@ -95,7 +97,7 @@ export const IrradianceMapGenerator = new class IrradianceMapGenerator {
    */
   generate(inputTexture) {
     const outputTexture = this.device.createTexture({
-      size: [64, 32],
+      size: [128, 64],
       format: 'rgba16float',
       usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     })

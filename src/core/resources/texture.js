@@ -1,5 +1,6 @@
 import { Renderer } from "../renderer.js";
 import { MipmapGenerator } from "../utils/mipmapGenerator.js";
+import { decodeExr } from "../utils/exrDecoder.js";
 
 export class Texture {
   /** @type { GPUTexture } */
@@ -33,32 +34,29 @@ export class Texture {
   }
 
   /**
+    * Initializes the texture from half-float RGBA pixel data (e.g. decoded EXR).
+    * @param { Uint16Array } data
     * @param { number } width
     * @param { number } height
     */
-  #createTexture(width, height) {
-    this.texture = Renderer.device.createTexture({
-      size: [width, height, 1],
-      format: "rgba8unorm",
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
+  initHalfFloat(data, width, height) {
+    MipmapGenerator.init(Renderer.device);
+    this.texture = MipmapGenerator.generateMipmapsFromHalfFloat(data, width, height);
     this.sampler = Renderer.device.createSampler({
-      magFilter: "linear",
       minFilter: "linear",
-      addressModeU: "repeat",
-      addressModeV: "repeat",
+      magFilter: "linear",
       mipmapFilter: "linear",
+      addressModeU: "repeat",
+      addressModeV: "clamp-to-edge",
     });
-    return this.texture;
-  }
 
-  #generateMipmaps(image) {
-    // TODO: Implement mipmap generation
+    return this;
   }
 
   /** @param { string } url */
   static async load(url) {
+    if (/\.exr(\?.*)?$/i.test(url)) return Texture.#loadExr(url);
+
     return new Promise((resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve(new Texture().init(image));
@@ -68,5 +66,16 @@ export class Texture {
       };
       image.src = url;
     });
+  }
+
+  /** @param { string } url */
+  static async #loadExr(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load EXR "${url}": ${response.status} ${response.statusText}`);
+    }
+
+    const { width, height, data } = await decodeExr(await response.arrayBuffer());
+    return new Texture().initHalfFloat(data, width, height);
   }
 }

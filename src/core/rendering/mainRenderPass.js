@@ -169,6 +169,8 @@ export class MainRenderPass extends RenderPass {
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this.sceneTextureView = this.sceneTexture.createView();
+
+      this.renderPassDescriptor.colorAttachments[0].view = this.sceneTextureView;
     });
   }
 

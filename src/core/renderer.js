@@ -63,7 +63,11 @@ export const Renderer = new class Renderer {
 
     Layouts.init(this.device);
 
-    this.context.configure({ device: this.device, format: this.format });
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+      alphaMode: "premultiplied",
+    });
 
     await this.#initRenderPipeline();
     await this.#defineAssets()
@@ -72,7 +76,11 @@ export const Renderer = new class Renderer {
   #updateViewportSize() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
-    this.context.configure({ device: this.device, format: this.format });
+    this.context.configure({
+      device: this.device,
+      format: this.format,
+      alphaMode: "premultiplied",
+    });
     this.depthTexture.destroy();
     this.depthTexture = this.device.createTexture({
       size: [this.canvas.width, this.canvas.height, 1],
@@ -95,7 +103,7 @@ export const Renderer = new class Renderer {
     });
 
     const texture = await Texture.load("/test.png");
-    this.defaultMaterial = new Material().init(texture, texture);
+    this.defaultMaterial = new Material().init();
 
     this.shadowRenderPass.assignObjectBuffer(this.objectBuffer);
     this.mainRenderPass.assignObjectBuffer(this.objectBuffer);

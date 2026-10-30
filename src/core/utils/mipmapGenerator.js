@@ -1,6 +1,6 @@
-const SOURCE_CODE = /* wgsl */`
+const sourceCode = (format) => /* wgsl */`
   @group(0) @binding(0) var inputTexture : texture_2d<f32>;
-  @group(0) @binding(1) var outputTexture : texture_storage_2d<rgba8unorm, write>;
+  @group(0) @binding(1) var outputTexture : texture_storage_2d<${format}, write>;
 
   @compute @workgroup_size(8, 8)
   fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -26,8 +26,8 @@ const SOURCE_CODE = /* wgsl */`
 `;
 
 export const MipmapGenerator  = new class MipmapGenerator {
-  /** @type { GPUComputePipeline } */
-  pipeline;
+  /** @type { Map<GPUTextureFormat, GPUComputePipeline> } */
+  pipelines = new Map();
 
   /** @type { GPUDevice } */
   device;
@@ -35,18 +35,55 @@ export const MipmapGenerator  = new class MipmapGenerator {
 
   /** @param { GPUDevice } device */
   init(device) {
-    if (this.pipeline) return;
-
     this.device = device;
-    this.pipeline = device.createComputePipeline({
-      layout: 'auto',
-      compute: {
-        module: device.createShaderModule({
-          code: SOURCE_CODE,
-        }),
-        entryPoint: 'main',
-      },
-    })
+  }
+
+  /** @param { GPUTextureFormat } format */
+  #getPipeline(format) {
+    let pipeline = this.pipelines.get(format);
+    if (!pipeline) {
+      pipeline = this.device.createComputePipeline({
+        layout: 'auto',
+        compute: {
+          module: this.device.createShaderModule({
+            code: sourceCode(format),
+          }),
+          entryPoint: 'main',
+        },
+      });
+      this.pipelines.set(format, pipeline);
+    }
+    return pipeline;
+  }
+
+  /**
+   * Creates an rgba16float texture from half-float RGBA data and generates its mipmaps.
+   *
+   * @param { Uint16Array } data
+   * @param { number } width
+   * @param { number } height
+   * @returns { GPUTexture }
+   */
+  generateMipmapsFromHalfFloat(data, width, height) {
+    const mipLevelCount = Math.floor(Math.log2(Math.max(width, height))) + 1;
+
+    const outputTexture = this.device.createTexture({
+      size: [width, height, 1],
+      format: 'rgba16float',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
+      mipLevelCount,
+    });
+
+    this.device.queue.writeTexture(
+      { texture: outputTexture },
+      data,
+      { bytesPerRow: width * 8 },
+      { width, height },
+    );
+
+    if (mipLevelCount > 1) this.generate(outputTexture, mipLevelCount - 1);
+
+    return outputTexture;
   }
 
   /**
@@ -92,8 +129,10 @@ export const MipmapGenerator  = new class MipmapGenerator {
       mipLevelCount: 1,
     });
 
+    const pipeline = this.#getPipeline(inputTexture.format);
+
     const bindGroup = this.device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
+      layout: pipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
@@ -110,7 +149,7 @@ export const MipmapGenerator  = new class MipmapGenerator {
     const height = Math.max(1, inputTexture.height >> (mipLevel + 1));
 
     const passEncoder = commandEncoder.beginComputePass();
-    passEncoder.setPipeline(this.pipeline);
+    passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8));
     passEncoder.end();

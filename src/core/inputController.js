@@ -14,6 +14,7 @@ export const InputController = new class InputController {
   #keys = new Set();
   mousePos = vec2.create();
   mouseMovement = vec2.create();
+  mouseWheel = 0;
 
   /** @type { MouseButton } */
   mouseButton = MouseButton.NONE;
@@ -43,6 +44,10 @@ export const InputController = new class InputController {
       this.mouseMovement[1] = event.movementY;
     });
 
+    domElement.addEventListener("wheel", (event) => {
+      this.mouseWheel += event.deltaY;
+    }, { passive: true });
+
     domElement.addEventListener("mousedown", (e) => {
       this.mouseButton = e.button + 1;
     })
@@ -62,5 +67,6 @@ export const InputController = new class InputController {
   update() {
     this.mouseMovement[0] = 0;
     this.mouseMovement[1] = 0;
+    this.mouseWheel = 0;
   }
 };

@@ -13,6 +13,12 @@ export class Material {
   /** @type { GPUTextureView } */
   static FALLBACK_TEXTURE;
 
+  /** @type { GPUTextureView } */
+  static FALLBACK_BLACK_TEXTURE;
+
+  /** @type { GPUTextureView } */
+  static FALLBACK_TEXTURE_NORMAL;
+
   /** @type { GPUSampler } */
   static FALLBACK_SAMPLER;
 
@@ -21,6 +27,12 @@ export class Material {
 
   /** @type { Texture } */
   normalMap;
+
+  /** @type { Texture } */
+  ormMap;
+
+  /** @type { Texture } */
+  emissionMap;
 
   /** @type { GPUBindGroup } */
   bindGroup;
@@ -32,8 +44,9 @@ export class Material {
   #uniformBuffer;
 
   #normalScale = 1.0;
-  #metallic = 0.0;
+  #metallic = 1.0;
   #roughness = 1.0;
+  #albedoTint = [1.0, 1.0, 1.0];
 
   get normalScale() {
     return this.#normalScale;
@@ -42,6 +55,33 @@ export class Material {
   set normalScale(value) {
     this.#normalScale = value;
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 0, new Float32Array([value]));
+  }
+
+  get albedoTint() {
+    return this.#albedoTint;
+  }
+
+  set albedoTint(value) {
+    this.#albedoTint = value;
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 16, new Float32Array(value));
+  }
+
+  get metallic() {
+    return this.#metallic;
+  }
+
+  set metallic(value) {
+    this.#metallic = value;
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 28, new Float32Array([value]));
+  }
+
+  get roughness() {
+    return this.#roughness;
+  }
+
+  set roughness(value) {
+    this.#roughness = value;
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 32, new Float32Array([value]));
   }
 
   static initFallbackTexture() {
@@ -53,14 +93,42 @@ export class Material {
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
     });
 
+    const fallbackBlackTexture = Renderer.device.createTexture({
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+
+    const fallbackNormalTexture = Renderer.device.createTexture({
+      size: [1, 1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+
     Renderer.device.queue.writeTexture(
       { texture: fallbackTexture },
+      new Uint8Array([255, 255, 255, 255]),
+      { bytesPerRow: 4 },
+      { width: 1, height: 1, depthOrArrayLayers: 1 }
+    );
+
+    Renderer.device.queue.writeTexture(
+      { texture: fallbackNormalTexture },
       new Uint8Array([128, 128, 255, 255]),
       { bytesPerRow: 4 },
       { width: 1, height: 1, depthOrArrayLayers: 1 }
     );
 
+    Renderer.device.queue.writeTexture(
+      { texture: fallbackBlackTexture },
+      new Uint8Array([0, 0, 0, 255]),
+      { bytesPerRow: 4 },
+      { width: 1, height: 1, depthOrArrayLayers: 1 }
+    );
+
     Material.FALLBACK_TEXTURE = fallbackTexture.createView();
+    Material.FALLBACK_TEXTURE_NORMAL = fallbackNormalTexture.createView();
+    Material.FALLBACK_BLACK_TEXTURE = fallbackBlackTexture.createView();
     Material.FALLBACK_SAMPLER = Renderer.device.createSampler({
       magFilter: 'linear',
       minFilter: 'linear',
@@ -69,12 +137,23 @@ export class Material {
   }
 
   /**
-    * @param { Texture } texture
+    * @param { Texture } albedo
     * @param { Texture | null } normalmap
+    * @param { Texture | null } ormMap
+    * @param { Texture | null } emissionMap
+    *
+    * @returns { Material }
     */
-  init(texture, normalmap = null) {
-    this.albedo = texture;
+  init(
+    albedo = null,
+    normalmap = null,
+    ormMap = null,
+    emissionMap = null,
+  ) {
+    this.albedo = albedo;
     this.normalMap = normalmap;
+    this.ormMap = ormMap;
+    this.emissionMap = emissionMap;
 
     Material.initFallbackTexture();
 
@@ -104,22 +183,25 @@ export class Material {
           binding: 2,
           resource: this.normalMap
             ? this.normalMap.texture.createView()
-            : Material.FALLBACK_TEXTURE,
+            : Material.FALLBACK_TEXTURE_NORMAL,
         },
         {
           binding: 3,
-          resource: Material.FALLBACK_TEXTURE,
+          resource: this.ormMap
+            ? this.ormMap.texture.createView()
+            : Material.FALLBACK_TEXTURE,
         },
         {
           binding: 4,
-          resource: Material.FALLBACK_TEXTURE,
+          resource: this.emissionMap
+            ? this.emissionMap.texture.createView()
+            : Material.FALLBACK_BLACK_TEXTURE,
         },
         {
           binding: 5,
           resource: {
             buffer: this.#uniformBuffer,
             offset: 0,
-            size: 4,
           },
         },
       ]
@@ -128,10 +210,13 @@ export class Material {
 
   #initUniformBuffer() {
     this.#uniformBuffer = Renderer.device.createBuffer({
-      size: 16,
+      size: 80,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
     Renderer.device.queue.writeBuffer(this.#uniformBuffer, 0, new Float32Array([this.#normalScale]));
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 16, new Float32Array(this.#albedoTint));
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 28, new Float32Array([this.#metallic]));
+    Renderer.device.queue.writeBuffer(this.#uniformBuffer, 32, new Float32Array([this.#roughness]));
   }
 }

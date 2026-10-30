@@ -36,12 +36,12 @@ export const Layouts = new class Layouts {
         visibility: GPUShaderStage.FRAGMENT,
         texture: {},
       },
-      { // Roughness map texture
+      { // orm map texture
         binding: 3,
         visibility: GPUShaderStage.FRAGMENT,
         texture: {}
       },
-      { // Metallic map texture
+      { // Emissive map texture
         binding: 4,
         visibility: GPUShaderStage.FRAGMENT,
         texture: {}

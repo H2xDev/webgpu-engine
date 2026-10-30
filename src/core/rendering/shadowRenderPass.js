@@ -97,7 +97,6 @@ export class ShadowRenderPass extends RenderPass {
     */
   encode(commandEncoder, renderCallback) {
     if (!DirectionalLight.current) {
-      console.warn("No directional light found. Skipping shadow pass.");
       return;
     }
 

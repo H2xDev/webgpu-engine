@@ -50,6 +50,7 @@ export class PostProcessPass extends RenderPass {
   }
 
   #initBindGroup() {
+    this.sceneView = MainRenderPass.instance.sceneTextureView;
     this.bindGroup = this.device.createBindGroup({
       layout: Layouts.postProcessLayout,
       entries: [
@@ -59,9 +60,7 @@ export class PostProcessPass extends RenderPass {
         },
         {
           binding: 1,
-          resource: this.device.createSampler({
-            'label': 'Post Process Sampler',
-          }),
+          resource: this.device.createSampler({ label: 'Post Process Sampler' }),
         },
       ],
     });
@@ -113,6 +112,10 @@ export class PostProcessPass extends RenderPass {
 
   /** @param { GPUCommandEncoder } commandEncoder */
   encode(commandEncoder) {
+    if (this.sceneView !== MainRenderPass.instance.sceneTextureView) {
+      this.#initBindGroup();
+    }
+
     this.#updateViewTexture();
 
     let rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);

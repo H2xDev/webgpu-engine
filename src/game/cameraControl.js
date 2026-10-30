@@ -3,6 +3,13 @@ import { Entity3D } from '../core/nodes/entity3d.js';
 import { InputController } from '../core/inputController.js';
 
 export class CameraControl extends Entity3D {
+  /** @type { number } */
+  speed = 1.0;
+
+  constructor(speed = 1.0) {
+    super();
+    this.speed = speed;
+  }
   /** @param { number } dt */
   update(dt) {
     if (InputController.is_lmb_pressed) {
@@ -13,7 +20,7 @@ export class CameraControl extends Entity3D {
     const forwardSpeed = InputController.is_key_pressed("KeyW") ? 1 : InputController.is_key_pressed("KeyS") ? -1 : 0;
     const rightSpeed = InputController.is_key_pressed("KeyD") ? 1 : InputController.is_key_pressed("KeyA") ? -1 : 0;
 
-    const speed = 1000.0 * dt;
+    const speed = this.speed * dt;
     const forwardMovement = vec3.scale(vec3.create(), this.forward, forwardSpeed * speed);
     const rightMovement = vec3.scale(vec3.create(), this.right, rightSpeed * speed);
 

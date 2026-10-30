@@ -33,7 +33,19 @@ fn fragment_main(
   let u = (0.5 - atan2(rayWorld.z, rayWorld.x) / (2.0 * PI));
   let v = (0.5 - asin(rayWorld.y) / PI);
 
-  let color = textureSample(panoramaTexture, panoramaSampler, vec2<f32>(u, v)).rgb;
+  // atan2 wraps at the seam, which makes the derivatives huge and selects the lowest mip.
+  // Use derivatives of a phase-shifted u there, and pick whichever is continuous.
+  let uShifted = fract(u + 0.5);
+  let dUdx = select(dpdx(u), dpdx(uShifted), fwidth(uShifted) < fwidth(u));
+  let dUdy = select(dpdy(u), dpdy(uShifted), fwidth(uShifted) < fwidth(u));
 
-  return vec4<f32>(color, 1.0);
+  let color = textureSampleGrad(
+    panoramaTexture,
+    panoramaSampler,
+    vec2<f32>(u, v),
+    vec2<f32>(dUdx, dpdx(v)),
+    vec2<f32>(dUdy, dpdy(v))
+  ).rgb;
+
+  return vec4<f32>(color, 1.0) * envData.energy;
 }

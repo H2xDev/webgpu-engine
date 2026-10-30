@@ -16,7 +16,7 @@ export class Environment {
   /** @type { GPUTexture } */
   irradianceMap;
 
-  #energy = 0.8;
+  #energy = 2.0;
 
   get energy() {
     return this.#energy;
@@ -61,7 +61,13 @@ export class Environment {
         },
         {
           binding: 1,
-          resource: this.panoramaTexture.sampler,
+          resource: EnvironmentRenderPass.instance.device.createSampler({
+            addressModeU: 'repeat',
+            addressModeV: 'clamp-to-edge',
+            magFilter: 'linear',
+            minFilter: 'linear',
+            mipmapFilter: 'linear',
+          })
         },
         {
           binding: 2,

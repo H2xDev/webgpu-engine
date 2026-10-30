@@ -95,6 +95,8 @@ export class EnvironmentRenderPass extends RenderPass {
     if (!Environment.current) return;
     if (!Camera3D.current) return;
 
+    this.renderPassDescriptor.colorAttachments[0].view = MainRenderPass.instance.sceneTextureView;
+
     const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
     Camera3D.current.writeToBuffer(this.uniformBuffer);
     rp.setPipeline(this.pipeline);
