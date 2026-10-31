@@ -1,11 +1,9 @@
-import { Entity3D } from '../core/nodes/entity3d.js';
-import { MeshInstance } from '../core/nodes/meshInstance.js';
+import { Entity3D, MeshInstance, Camera3D } from '@core';
 import { Material } from '../core/resources/material.js';
 import { BoxMesh } from '../core/resources/boxMesh.js';
 import { InputController } from '../core/inputController.js';
 
 import { vec3 } from '../core/gl-matrix/index.js';
-import { Camera3D } from '../core/nodes/camera.js';
 
 export class Player extends Entity3D {
   meshInstance;

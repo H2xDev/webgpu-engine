@@ -11,15 +11,8 @@ export class Texture {
 
   /**
     * @param { HTMLImageElement } image
-    * @param { boolean } generateMipmaps
     */
-  init(image, generateMipmaps = false) {
-    // Renderer.device.queue.copyExternalImageToTexture(
-    //   { source: image },
-    //   { texture: this.#createTexture(image.width, image.height) },
-    //   [image.width, image.height]
-    // );
-
+  init(image) {
     MipmapGenerator.init(Renderer.device);
     this.texture = MipmapGenerator.generateMipmaps(image);
     this.sampler = Renderer.device.createSampler({

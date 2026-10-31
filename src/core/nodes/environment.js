@@ -2,8 +2,9 @@ import { EnvironmentRenderPass } from "../rendering/environmentRenderPass.js";
 import { Texture } from "../resources/texture.js";
 import { Layouts } from "../rendering/layouts.js";
 import { IrradianceMapGenerator } from "../utils/irradianceMapGenerator.js";
+import { Entity3D } from "./entity3d.js";
 
-export class Environment {
+export class Environment extends Entity3D {
   /** @type { Environment | null } */
   static current;
 
@@ -36,14 +37,16 @@ export class Environment {
 
   /** @param { Texture } panoramaTexture */
   constructor(panoramaTexture) {
-    if (!Environment.current) {
-      Environment.current = this;
-    }
+    super();
 
     this.panoramaTexture = panoramaTexture;
     this.energy = this.#energy;
     this.#initIrradianceMap();
     this.#initBindGroup();
+  }
+
+  enterTree() {
+    Environment.current = this;
   }
 
   #initIrradianceMap() {

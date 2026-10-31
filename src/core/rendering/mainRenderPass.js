@@ -1,3 +1,4 @@
+import { Renderer } from "../renderer.js";
 import { Camera3D } from "../nodes/camera.js";
 import { DirectionalLight } from "../nodes/directionalLight.js";
 import { Environment } from "../nodes/environment.js";
@@ -63,6 +64,9 @@ export class MainRenderPass extends RenderPass {
   /** @type { GPUBindGroup } */
   shaderBindGroup = null;
 
+  /** @type { GPUBindGroup } used when no Environment node is active */
+  fallbackEnvironmentBindGroup = null;
+
   /**
     * @param { GPUDevice } device
     * @param { GPUCanvasContext } context
@@ -85,6 +89,7 @@ export class MainRenderPass extends RenderPass {
     this.#initDepthTexture();
     this.#initRenderPassDescriptor();
     this.#initBuffer();
+    this.#initFallbackEnvironment();
     await this.#initPipeline();
 
     return super.init();
@@ -132,7 +137,9 @@ export class MainRenderPass extends RenderPass {
     /** @type { GPURenderPassEncoder } */
     const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
 
-    Camera3D.current.writeToBuffer(this.uniformBuffer);
+    if (Camera3D.current) {
+      Camera3D.current.writeToBuffer(Renderer.device, this.uniformBuffer);
+    }
 
     if (DirectionalLight.current) {
       DirectionalLight.current.writeLightDataToBuffer(this.uniformBuffer, 64 * 3);
@@ -140,10 +147,7 @@ export class MainRenderPass extends RenderPass {
 
     rp.setPipeline(this.pipeline);
     rp.setBindGroup(2, ShadowRenderPass.instance.shadowMapBindGroup);
-
-    if (Environment.current) {
-      rp.setBindGroup(3, Environment.current.bindGroup);
-    }
+    rp.setBindGroup(3, Environment.current?.bindGroup ?? this.fallbackEnvironmentBindGroup);
 
     renderCallback(rp, this.renderBindGroup);
     rp.end();
@@ -182,10 +186,38 @@ export class MainRenderPass extends RenderPass {
     });
   }
 
+  #initFallbackEnvironment() {
+    const { device } = this;
+
+    const texture = device.createTexture({
+      size: [1, 1, 1],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.TEXTURE_BINDING,
+    });
+
+    const uniformBuffer = device.createBuffer({
+      label: 'Fallback Environment Uniform Buffer',
+      size: 256,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    this.fallbackEnvironmentBindGroup = device.createBindGroup({
+      label: 'Fallback Environment Bind Group',
+      layout: Layouts.environmentLayout,
+      entries: [
+        { binding: 0, resource: texture.createView() },
+        { binding: 1, resource: device.createSampler() },
+        { binding: 2, resource: texture.createView() },
+        { binding: 3, resource: { buffer: uniformBuffer } },
+      ],
+    });
+  }
+
   #initRenderPassDescriptor() {
     const { context } = this;
 
     this.renderPassDescriptor = {
+      label: "Main Render Pass",
       colorAttachments: [{
         view: this.sceneTextureView,
         clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 1.0 },

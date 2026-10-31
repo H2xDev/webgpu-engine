@@ -2,16 +2,50 @@ import { vec3, mat4 } from '../gl-matrix/index.js';
 import { TO_RAD } from '../utils.js';
 
 export class Entity3D {
+  root = false;
+
   /** @type { ReturnType<mat4.create> } */
   transform = mat4.identity(mat4.create());
 
   /** @type { Entity3D | null } */
-  parent = null;
+  parent_ = null;
+
+  get parent() {
+    return this.parent_;
+  }
+
+  set parent(value) {
+    const oldValue = this.parent_;
+    this.parent_ = value;
+
+    if (!oldValue && value && value.isInsideTree) {
+      this.enterTree();
+      this.children.forEach(child => child.enterTree());
+      return;
+    }
+
+    if (oldValue && !value) {
+      this.children.forEach(child => child.exitTree());
+      this.exitTree();
+      return;
+    }
+  }
 
   /** @type { Entity3D[] } */
   children = [];
 
   #position_ = vec3.create();
+
+  get isInsideTree() {
+    if (this.root) return true;
+
+    let current = this.parent;
+    while (current) {
+      if (current.root) return true;
+      current = current.parent;
+    }
+    return false;
+  }
 
   /** @type { { x: number; y: number; z: number; } } */
   posProxy = new Proxy({x: 0, y: 0, z: 0}, {
@@ -124,7 +158,11 @@ export class Entity3D {
     this.position = tempPosition;
   }
 
-  /** @param { Entity3D } child */
+  /**
+    * @template { Entity3D } T
+    * @param { T } child
+    * @returns { T }
+    */
   addChild(child) {
     if (child.parent) {
       child.parent.removeChild(child);
@@ -148,4 +186,16 @@ export class Entity3D {
   update(_dt) {
     this.children.forEach(child => child.update(_dt));
   }
+
+  /**
+    * Triggered when the entity is added to the scene tree. Override this method in subclasses to perform custom initialization or setup logic.
+    * @virtual
+    */
+  enterTree() {}
+
+  /**
+    * Triggered when the entity is removed from the scene tree. Override this method in subclasses to perform custom cleanup or teardown logic.
+    * @virtual
+    */
+  exitTree() {}
 }

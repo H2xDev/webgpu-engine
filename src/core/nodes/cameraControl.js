@@ -1,6 +1,5 @@
-import { vec3 } from '../core/gl-matrix/index.js';
-import { Entity3D } from '../core/nodes/entity3d.js';
-import { InputController } from '../core/inputController.js';
+import { vec3 } from 'gl-matrix';
+import { Entity3D, InputController } from '@core';
 
 export class CameraControl extends Entity3D {
   /** @type { number } */

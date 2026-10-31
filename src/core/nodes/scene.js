@@ -1,6 +1,8 @@
 import { Entity3D } from "./entity3d.js";
 
 export class Scene extends Entity3D {
+  root = true;
+
   constructor() {
     super();
   }

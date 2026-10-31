@@ -1,5 +1,4 @@
-import { mat4, vec3 } from "../gl-matrix/index.js";
-import { Renderer } from "../renderer.js";
+import { mat4, vec3 } from "gl-matrix";
 
 import { TO_RAD } from "../utils.js";
 import { Entity3D } from "./entity3d.js";
@@ -45,20 +44,20 @@ export class Camera3D extends Entity3D {
       this.aspect = window.innerWidth / window.innerHeight;
       mat4.perspective(this.projection, TO_RAD * this.fov, this.aspect, this.near, this.far);
     });
+  }
 
-    if (!Camera3D.current) {
-      Camera3D.current = this;
-    }
+  enterTree() {
+    Camera3D.current = this;
   }
 
   /**
     * @param { GPUBuffer } buffer
     * @param { number } offset
     */
-  writeToBuffer(buffer, offset = 0) {
+  writeToBuffer(device, buffer, offset = 0) {
     const viewMatrix = mat4.invert(mat4.create(), this.globalTransform);
-    Renderer.device.queue.writeBuffer(buffer, offset + 0, viewMatrix);
-    Renderer.device.queue.writeBuffer(buffer, offset + 64, this.globalTransform);
-    Renderer.device.queue.writeBuffer(buffer, offset + 128, this.projection);
+    device.queue.writeBuffer(buffer, offset + 0, viewMatrix);
+    device.queue.writeBuffer(buffer, offset + 64, this.globalTransform);
+    device.queue.writeBuffer(buffer, offset + 128, this.projection);
   }
 }

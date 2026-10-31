@@ -6,7 +6,13 @@
 		"lib": ["ES2020", "DOM"],
 		"types": ["@webgpu/types"],
 		"checkJs": true,
-		"allowJs": true
+		"allowJs": true,
+		"baseUrl": ".",
+		"paths": {
+			"@core/*": ["src/core/*"],
+			"@game/*": ["src/game/*"]
+			"@core*": ["src/core"],
+		}
 	},
 	"include": ["**/*.js"],
 	"exclude": ["node_modules"]

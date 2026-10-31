@@ -1,4 +1,4 @@
-import { mat4, vec3 } from '../gl-matrix/index.js';
+import { mat4, vec3 } from 'gl-matrix';
 import { Renderer } from '../renderer.js';
 import { Camera3D } from './camera.js';
 
@@ -20,10 +20,10 @@ export class DirectionalLight extends Camera3D {
     this.distance = this.size;
     // Light sits `distance` behind the camera, so depth range is centered on the camera position
     this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, 0.0001, this.distance * 2);
+  }
 
-    if (!DirectionalLight.current) {
-      DirectionalLight.current = this;
-    }
+  enterTree() {
+    DirectionalLight.current = this;
   }
 
   update() {

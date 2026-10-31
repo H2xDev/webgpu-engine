@@ -1,3 +1,4 @@
+import { Renderer } from "../renderer.js";
 import { Camera3D } from "../nodes/camera.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
@@ -98,7 +99,7 @@ export class EnvironmentRenderPass extends RenderPass {
     this.renderPassDescriptor.colorAttachments[0].view = MainRenderPass.instance.sceneTextureView;
 
     const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
-    Camera3D.current.writeToBuffer(this.uniformBuffer);
+    Camera3D.current.writeToBuffer(Renderer.device, this.uniformBuffer);
     rp.setPipeline(this.pipeline);
     rp.setBindGroup(0, Environment.current.bindGroup);
     rp.draw(3);
