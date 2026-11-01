@@ -33,14 +33,16 @@ export class FollowCamera extends Entity3D {
   followPosition
 
   /** Orbit goals, in degrees and world units. */
-  yaw = 0;
-  pitch = 0;
+  yaw = -130;
+  pitch = 45;
   distance = 15;
+
+  controlsEnabled = true;
 
   /** Pivot offset from the target, moved by Shift+LMB drag. */
   panOffset = vec3.create();
 
-  #yaw = -100 - 30;
+  #yaw = -130;
   #pitch = 45;
   #distance = 15;
 
@@ -122,7 +124,7 @@ export class FollowCamera extends Entity3D {
 
   /** @param { number } dt */
   update(dt) {
-    // this.#handleOrbitInput(dt);
+    if (this.controlsEnabled) this.#handleOrbitInput(dt);
     this.#applyOrbit();
 
     const pivot = vec3.add(vec3.create(), this.target.position, this.panOffset);

@@ -1,4 +1,4 @@
-import { Entity3D, MeshInstance, Camera3D } from '@core';
+import { Entity3D, MeshInstance, Camera3D, Tween } from '@core';
 import { BoxMesh } from '../core/resources/boxMesh.js';
 import { InputController } from '../core/inputController.js';
 import { MaterialManager } from './materialManager.js';
@@ -37,6 +37,8 @@ export class Player extends Entity3D {
   /** @type { { target: [number, number], pivot: vec3, offset: vec3, axis: vec3, elapsed: number, startRotation: mat4 } | null } */
   roll = null;
 
+  ready = false;
+
   constructor() {
     super()
     this.meshInstance = this.addChild(new MeshInstance(
@@ -49,7 +51,13 @@ export class Player extends Entity3D {
     ));
 
     // The mesh is centered on the entity; the entity sits at the cube's center while rolling.
-    this.meshInstance.position = [0, 0, 0];
+    this.meshInstance.position = [0, 10, 0];
+
+    Tween
+      .property(this.meshInstance, "position", [0.0, 0.0, 0.0], 3000, "easeOutCirc")
+      .then(() => this.ready = true);
+
+
     this.placeAt(0, 0, 0);
   }
 
@@ -141,6 +149,8 @@ export class Player extends Entity3D {
    * @param { number } dt
    */
   update(dt) {
+    if (!this.ready) return super.update(dt);
+
     if (this.roll) {
       this.roll.elapsed += dt;
       const t = easeInCirc(this.roll.elapsed / ROLL_DURATION);

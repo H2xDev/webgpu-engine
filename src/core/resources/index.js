@@ -7,3 +7,4 @@ export * from "./objMesh.js";
 export * from "./renderInfo.js";
 export * from "./material.js";
 export * from "./mesh.js";
+export * from "./tween.js";

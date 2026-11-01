@@ -30,8 +30,8 @@ export const MainScene = new class MainScene extends Scene {
   async setupSun() {
     const env = this.addChild(await Environment.createFromTexture("/src/game/sky_124_2k.png"));
     const light = this.addChild(new DirectionalLight(50));
-    light.color = [4.0, 4.0, 4.0];
-    light.rotate([0, 1, 0], 75);
+    light.color = vec3.scale(vec3.create(), [0.96, 0.83, 0.61], 4.0);
+    light.rotate([0, 1, 0], 80);
     light.rotate(light.right, -45);
   }
 
@@ -54,7 +54,6 @@ export const MainScene = new class MainScene extends Scene {
     MaterialManager.createMaterial("ground", groundOptions);
 
     groundOptions.flags = 0;
-
     MaterialManager.createMaterial("ground-notrip", groundOptions);
   }
 
@@ -67,7 +66,15 @@ export const MainScene = new class MainScene extends Scene {
       vingetteIntensity: 1.0,
     }));
 
-    const pane = new Pane({ title: "Post Process" });
+    const pane = new Pane({ title: "Pilik 3D by H2xDev" });
+    pane.containerElem_.style.width = "350px";
+
+    pane.addBinding({ text: "WASD - controls\nHold LMB - control camera\nShift + LBM - pane camera" }, "text", {
+      readonly: true,
+      multiline: true,
+      rows: 5,
+    })
+
     pane.addBinding(this, "fps", {
       readonly: true,
       min: 0, max: 240
@@ -77,6 +84,8 @@ export const MainScene = new class MainScene extends Scene {
       view: "graph",
       min: 0, max: 240
     });
+
+    pane.addBinding(this.camera, "controlsEnabled", { label: "Camera controls" });
 
     const ppf = pane.addFolder({ title: "Post Process Settings" });
 
