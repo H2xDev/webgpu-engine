@@ -25,7 +25,7 @@ export const ShaderManager = new class ShaderManager {
       return this.cache.get(path)
     }
 
-    const sourcePath = joinPaths("/", path + ".wgsl")
+    const sourcePath = joinPaths("./", path + ".wgsl")
 
     const promise = fetch(sourcePath)
       .then(type => type.text())

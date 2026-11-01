@@ -85,7 +85,9 @@ export const Renderer = new class Renderer {
       format: this.format,
       alphaMode: "premultiplied",
     });
-    this.depthTexture.destroy();
+
+    if (this.depthTexture) this.depthTexture.destroy();
+
     this.depthTexture = this.device.createTexture({
       size: [this.canvas.width, this.canvas.height, 1],
       format: "depth24plus",

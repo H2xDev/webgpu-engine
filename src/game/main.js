@@ -28,7 +28,7 @@ export const MainScene = new class MainScene extends Scene {
   }
 
   async setupSun() {
-    const env = this.addChild(await Environment.createFromTexture("/src/game/sky_124_2k.png"));
+    const env = this.addChild(await Environment.createFromTexture("./src/game/sky_124_2k.png"));
     const light = this.addChild(new DirectionalLight(50));
     light.color = vec3.scale(vec3.create(), [0.96, 0.83, 0.61], 4.0);
     light.rotate([0, 1, 0], 80);
@@ -42,9 +42,9 @@ export const MainScene = new class MainScene extends Scene {
 
   async prepareMaterials() {
     const groundOptions = {
-      albedo: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_baseColor_1k.png"),
-      normalMap: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_normal_gl_1k.png"),
-      ormMap: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_roughness_1k.png"),
+      albedo: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_baseColor_1k.png"),
+      normalMap: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_normal_gl_1k.png"),
+      ormMap: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_roughness_1k.png"),
       roughness: 0.8,
       metallic: 0.5,
       normalScale: 0.5,
@@ -98,6 +98,14 @@ export const MainScene = new class MainScene extends Scene {
     ppf.addBinding(this.postProcess, "dofAperture", { min: 0.0, max: 100.0 });
     ppf.addBinding(this.postProcess, "dofMaxRadius", { min: 0.0, max: 20.0 });
     ppf.addBinding(this.postProcess, "dofSamples", { min: 1, max: 64 });
+
+
+    const mat = pane.addFolder({ title: "Material Settings" });
+    const groundMat = MaterialManager.get("ground");
+    mat.addBinding(groundMat, "roughness", { min: 0.0, max: 1.0 });
+    mat.addBinding(groundMat, "metallic", { min: 0.0, max: 1.0 });
+    mat.addBinding(groundMat, "normalScale", { min: 0.0, max: 10.0 });
+    mat.addBinding(groundMat, "uvScale", { min: 0.1, max: 2.0 });
   }
 
   async enter() {
