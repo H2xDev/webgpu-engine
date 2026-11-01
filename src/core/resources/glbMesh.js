@@ -153,17 +153,21 @@ export class GlbMesh extends Mesh {
     const materials = new Map();
     for (const [index, def] of (json.materials ?? []).entries()) {
       const albedo = await loadTexture(def.pbrMetallicRoughness?.baseColorTexture?.index);
-      const normal = await loadTexture(def.normalTexture?.index);
-      const emission = await loadTexture(def.emissiveTexture?.index);
-      const roughness = await loadTexture(def.pbrMetallicRoughness?.metallicRoughnessTexture?.index);
-
-      const material = new Material().init(albedo, normal, roughness, emission);
-      if (normal && def.normalTexture.scale !== undefined) material.normalScale = def.normalTexture.scale;
+      const normalMap = await loadTexture(def.normalTexture?.index);
+      const emissionMap = await loadTexture(def.emissiveTexture?.index);
+      const ormMap = await loadTexture(def.pbrMetallicRoughness?.metallicRoughnessTexture?.index);
       const baseColor = def.pbrMetallicRoughness?.baseColorFactor;
-      if (baseColor) material.albedoTint = baseColor.slice(0, 3);
 
-      material.metallic = def.pbrMetallicRoughness?.metallicFactor ?? 1.0;
-      material.roughness = def.pbrMetallicRoughness?.roughnessFactor ?? 1.0;
+      const material = new Material({
+        albedo,
+        normalMap,
+        ormMap,
+        emissionMap,
+        roughness: def.pbrMetallicRoughness?.roughnessFactor ?? 1.0,
+        metallic: def.pbrMetallicRoughness?.metallicFactor ?? 1.0,
+        albedoTint: baseColor ? baseColor.slice(0, 3) : [1.0, 1.0, 1.0],
+        normalScale: def.normalTexture?.scale ?? 1.0,
+      });
 
       materials.set(index, material);
     }

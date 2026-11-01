@@ -1,25 +1,37 @@
+struct PostProcessParameters {
+  aaEdgeThreshold: f32,
+  aaSpan: f32,
+
+  cameraNear: f32,
+  cameraFar: f32,
+
+  vignetteIntensity: f32,
+  vignetteRadius: f32,
+  vignetteSoftness: f32,
+
+  dofFocusDistance: f32,
+  dofAperture: f32,
+  dofMaxRadius: f32,
+  dofSamples: i32,
+}
+
 @binding(0) @group(0) var screenTexture: texture_2d<f32>;
 @binding(1) @group(0) var screenSampler: sampler;
 @binding(2) @group(0) var depthTexture: texture_depth_2d;
+@binding(3) @group(0) var<uniform> postProcessParams: PostProcessParameters;
 
 @binding(0) @group(1) var glowTexture: texture_2d<f32>;
 @binding(1) @group(1) var glowSampler: sampler;
 
 
-const AA_EDGE_THRESHOLD: f32 = 0.02; // relative depth discontinuity
-const AA_SPAN: f32 = 1.5;            // blur reach in texels
 
-const CAMERA_NEAR: f32 = 0.1;
-const CAMERA_FAR: f32 = 4000.0;
-const AO_SAMPLES: i32 = 32;
-const AO_RADIUS: f32 = 0.5;      // world units
-const AO_BIAS: f32 = 0.01;       // world units
-const AO_INTENSITY: f32 = 0.4;
-const AO_MAX_SCREEN_RADIUS: f32 = 0.1; // fraction of screen height
 const GOLDEN_ANGLE: f32 = 2.39996323;
 
+// Camera uses mat4.perspective (GL-style NO), so stored depth d = (f+n)/(f-n) - 2fn/((f-n)z)
 fn linearDepth(d: f32) -> f32 {
-  return CAMERA_NEAR * CAMERA_FAR / (CAMERA_FAR - d * (CAMERA_FAR - CAMERA_NEAR));
+  let near = postProcessParams.cameraNear;
+  let far = postProcessParams.cameraFar;
+  return 2.0 * near * far / ((far + near) - d * (far - near));
 }
 
 fn loadDepth(uv: vec2<f32>) -> f32 {
@@ -53,7 +65,8 @@ fn depthAA(uv: vec2<f32>) -> vec4<f32> {
   let edgeX = abs(zL + zR - 2.0 * zC);
   let edgeY = abs(zU + zD - 2.0 * zC);
   let edge = max(edgeX, edgeY) / max(zC, 1e-4);
-  let strength = smoothstep(AA_EDGE_THRESHOLD, AA_EDGE_THRESHOLD * 4.0, edge);
+  let threshold = postProcessParams.aaEdgeThreshold;
+  let strength = smoothstep(threshold, threshold * 4.0, edge);
   if (strength <= 0.0) {
     return center;
   }
@@ -63,7 +76,7 @@ fn depthAA(uv: vec2<f32>) -> vec4<f32> {
   if (dot(grad, grad) < 1e-12) {
     grad = vec2<f32>(edgeX, edgeY);
   }
-  let dir = normalize(grad) * texel * AA_SPAN;
+  let dir = normalize(grad) * texel * postProcessParams.aaSpan;
 
   let a = textureSampleLevel(screenTexture, screenSampler, uv - dir, 0.0).rgb;
   let b = textureSampleLevel(screenTexture, screenSampler, uv - dir * 0.5, 0.0).rgb;
@@ -74,59 +87,55 @@ fn depthAA(uv: vec2<f32>) -> vec4<f32> {
   return vec4<f32>(mix(center.rgb, blurred, strength), center.a);
 }
 
-fn interleavedGradientNoise(p: vec2<f32>) -> f32 {
-  return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715))));
+fn circleOfConfusion(uv: vec2<f32>) -> f32 {
+  let z = linearDepth(loadDepth(uv));
+  return clamp(abs(1.0 / postProcessParams.dofFocusDistance - 1.0 / z) * postProcessParams.dofAperture, 0.0, 1.0);
 }
 
-// Depth-only screen-space AO: returns occlusion visibility in [0, 1].
-fn ambientOcclusion(uv: vec2<f32>, fragCoord: vec2<f32>) -> f32 {
-  let rawDepth = loadDepth(uv);
-  if (rawDepth >= 1.0) {
-    return 1.0;
+fn depthOfField(uv: vec2<f32>, center: vec3<f32>) -> vec3<f32> {
+  let coc = circleOfConfusion(uv);
+  if (coc <= 0.0) {
+    return center;
   }
 
-  let dims = vec2<f32>(textureDimensions(depthTexture));
-  let aspect = dims.x / dims.y;
-  let z = linearDepth(rawDepth);
-
-  // Project the world radius to screen space (approximated, clamped)
-  let screenRadius = min(AO_RADIUS / z, AO_MAX_SCREEN_RADIUS);
-  let rotation = interleavedGradientNoise(fragCoord) * 6.2831853;
-
-  var occlusion = 0.0;
-  for (var i = 0; i < AO_SAMPLES; i++) {
+  let texel = 1.0 / vec2<f32>(textureDimensions(screenTexture));
+  let maxRadius = postProcessParams.dofMaxRadius;
+  let radius = coc * maxRadius;
+  let samples = postProcessParams.dofSamples;
+  var sum = center;
+  var weightSum = 1.0;
+  for (var i = 0; i < samples; i++) {
     let fi = f32(i);
-    let t = (fi + 0.5) / f32(AO_SAMPLES);
-    let angle = fi * GOLDEN_ANGLE + rotation;
-    let offset = vec2<f32>(cos(angle) / aspect, sin(angle)) * sqrt(t) * screenRadius;
-
-    let sampleUV = uv + offset;
-    if (any(sampleUV < vec2<f32>(0.0)) || any(sampleUV > vec2<f32>(1.0))) {
-      continue;
-    }
-
-    let sampleZ = linearDepth(loadDepth(sampleUV));
-    let diff = z - sampleZ - AO_BIAS;
-    if (diff > 0.0) {
-      let rangeCheck = smoothstep(0.0, 1.0, AO_RADIUS / max(abs(z - sampleZ), 1e-4));
-      occlusion += rangeCheck;
-    }
+    let r = sqrt((fi + 0.5) / f32(samples));
+    let theta = fi * GOLDEN_ANGLE;
+    let dir = vec2<f32>(cos(theta), sin(theta));
+    let dist = r * radius;
+    let sampleUV = uv + dir * dist * texel;
+    // A neighbour only bleeds onto this pixel if its own blur disc reaches this far
+    let sampleRadius = circleOfConfusion(sampleUV) * maxRadius;
+    let w = clamp(sampleRadius - dist + 1.0, 0.0, 1.0);
+    sum += textureSampleLevel(screenTexture, screenSampler, sampleUV, 0.0).rgb * w;
+    weightSum += w;
   }
+  return sum / weightSum;
+}
 
-  occlusion = occlusion / f32(AO_SAMPLES);
-  return clamp(1.0 - occlusion * AO_INTENSITY, 0.0, 1.0);
+fn vignette(uv: vec2<f32>, dims: vec2<f32>) -> f32 {
+  // Scale by height so the vignette stays circular regardless of aspect ratio
+  let centered = (uv - vec2<f32>(0.5)) * vec2<f32>(dims.x / dims.y, 1.0);
+  let dist = length(centered) / length(vec2<f32>(dims.x / dims.y, 1.0) * 0.5);
+  let radius = postProcessParams.vignetteRadius;
+  let falloff = smoothstep(radius, radius + postProcessParams.vignetteSoftness, dist);
+  return 1.0 - falloff * postProcessParams.vignetteIntensity;
 }
 
 @fragment
-fn fragment_main(
-  @builtin(position) position: vec4<f32>,
-  @location(0) uv: vec2<f32>
-) -> @location(0) vec4<f32> {
+fn fragment_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
   var screenSample: vec4<f32> = depthAA(uv);
+  screenSample = vec4<f32>(depthOfField(uv, screenSample.rgb), screenSample.a);
   let glowSample: vec4<f32> = textureSample(glowTexture, glowSampler, uv);
 
-  let ao = ambientOcclusion(uv, position.xy);
-  screenSample = vec4<f32>(screenSample.rgb * ao, screenSample.a);
-
-  return screenSample + glowSample;
+  let color = screenSample + glowSample;
+  let dims = vec2<f32>(textureDimensions(screenTexture));
+  return vec4<f32>(color.rgb * vignette(uv, dims), color.a);
 }

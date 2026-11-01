@@ -1,46 +1,114 @@
-import { vec3, mat4 } from "gl-matrix";
+import { vec3 } from "gl-matrix";
+import { Pane } from "tweakpane";
 
-import { Scene, Camera3D, MeshInstance, DirectionalLight, Environment, OrbitControl } from "@core/nodes";
-import { Texture, GlbMesh, BoxMesh, Material, PlaneMesh } from "@core/resources";
+import { Scene, MeshInstance, Environment, DirectionalLight, PostProcess } from "@core/nodes";
+import { GlbMesh, Material, PlaneMesh, Texture } from "@core/resources";
 
 import { Player } from "@game/player.js";
-import { LevelGenerator } from "@game/level.js";
+import { FollowCamera } from "@game/followCamera.js";
+import { MaterialManager } from "./materialManager.js";
 
 export const MainScene = new class MainScene extends Scene {
-  camera = new Camera3D();
-  cameraControl = new OrbitControl();
+  /** @type { Player } */
+  player
 
-  /** @type { DirectionalLight } */
-  directionalLight;
+  /** @type { FollowCamera } */
+  camera
 
-  /** @type { LevelGenerator } */
-  levelGenerator;
+  /** @type { PostProcess } */
+  postProcess
 
-  defineDirectionalLight() {
-    this.directionalLight = new DirectionalLight(10);
-    this.directionalLight.color = [10.0, 10.0, 10.0];
-    this.directionalLight.position = [0, 0, 0];
-    this.directionalLight.forward = vec3.normalize(vec3.create(), [-1, -0.2, -1]);
+  fps = 0.0;
 
-    this.directionalLight = this.addChild(this.directionalLight);
+  createGroundPlane() {
+    this.addChild(new MeshInstance(new PlaneMesh({
+      size: 2000,
+      material: MaterialManager.get("ground"),
+    })));
+  }
+
+  async setupSun() {
+    const env = this.addChild(await Environment.createFromTexture("/src/game/sky_124_2k.png"));
+    const light = this.addChild(new DirectionalLight(50));
+    light.color = [4.0, 4.0, 4.0];
+    light.rotate([0, 1, 0], 75);
+    light.rotate(light.right, -45);
+  }
+
+  setupCamera() {
+    this.camera = this.addChild(new FollowCamera(this.player));
+  }
+
+
+  async prepareMaterials() {
+    const groundOptions = {
+      albedo: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_baseColor_1k.png"),
+      normalMap: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_normal_gl_1k.png"),
+      ormMap: await Texture.load("/src/game/materials/ground_tiles_21_1k/ground_tiles_21_roughness_1k.png"),
+      roughness: 0.8,
+      metallic: 0.5,
+      normalScale: 0.5,
+      uvScale: 1/8.0,
+      flags: Material.Flags.TRIPLANAR_MAPPING,
+    }
+    MaterialManager.createMaterial("ground", groundOptions);
+
+    groundOptions.flags = 0;
+
+    MaterialManager.createMaterial("ground-notrip", groundOptions);
+  }
+
+  defineDebugUI() {
+    this.postProcess = this.addChild(new PostProcess({
+      dofMaxRadius: 12.0,
+      dofAperture: 20.0,
+      dofSamples: 64,
+
+      vingetteIntensity: 1.0,
+    }));
+
+    const pane = new Pane({ title: "Post Process" });
+    pane.addBinding(this, "fps", {
+      readonly: true,
+      min: 0, max: 240
+    });
+    pane.addBinding(this, "fps", {
+      readonly: true,
+      view: "graph",
+      min: 0, max: 240
+    });
+
+    const ppf = pane.addFolder({ title: "Post Process Settings" });
+
+    ppf.addBinding(this.postProcess, "aaEdgeThreshold", { min: 0.0, max: 0.1 });
+    ppf.addBinding(this.postProcess, "aaSpan", { min: 0.0, max: 5.0 });
+    ppf.addBinding(this.postProcess, "vingetteIntensity", { min: 0.0, max: 5.0 });
+    ppf.addBinding(this.postProcess, "vingetteRadius", { min: 0.0, max: 1.0 });
+    ppf.addBinding(this.postProcess, "vingetteSoftness", { min: 0.0, max: 1.0 });
+    ppf.addBinding(this.postProcess, "dofFocusDistance", { min: 1.0, max: 100.0, readonly: true });
+    ppf.addBinding(this.postProcess, "dofAperture", { min: 0.0, max: 100.0 });
+    ppf.addBinding(this.postProcess, "dofMaxRadius", { min: 0.0, max: 20.0 });
+    ppf.addBinding(this.postProcess, "dofSamples", { min: 1, max: 64 });
   }
 
   async enter() {
-    const panoramaTexture = await Texture.load("/src/game/sky.exr");
-    const glbMesh = await GlbMesh.load("/queen_of_swords/skull_salazar_downloadable.glb");
+    await this.prepareMaterials();
+    await this.setupSun()
 
-    this.addChild(new MeshInstance(glbMesh));
-    this.addChild(new Camera3D());
-    this.addChild(new Environment(panoramaTexture));
-
-    this.cameraControl.addChild(this.camera);
-    this.addChild(this.cameraControl);
+    this.player = this.addChild(new Player());
+    this.setupCamera()
+    this.createGroundPlane();
+    this.defineDebugUI();
   }
 
-  /**
-    * @param { number } dt
-    */
   update(dt) {
     super.update(dt);
+    this.fps = 1.0 / dt;
+
+    const distanceToCamera = vec3.distance(this.player.globalPosition, this.camera.camera.globalPosition);
+    if (distanceToCamera != this.postProcess.dofFocusDistance) {
+      this.postProcess.dofFocusDistance = distanceToCamera;
+    }
   }
 }
+

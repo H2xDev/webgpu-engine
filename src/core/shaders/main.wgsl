@@ -31,7 +31,12 @@ struct MaterialProperties {
   roughness: f32,
   emissionTint: vec3<f32>,
   emissionEnergy: f32,
+  uvScale: f32,
+  uvOffset: vec2<f32>,
+  flags: u32,
 }
+
+const MATERIAL_FLAG_TRIPLANAR_MAPPING: u32 = 1 << 0;
 
 const PI: f32 = 3.1415926535897932384626433832795;
 
@@ -91,19 +96,53 @@ fn vertex_main(
 #include "cotangentFrame"
 #include "shadow"
 
-fn getEnvironmentColor(worldNormal: vec3<f32>, lod: f32) -> vec3<f32> {
-  let u: f32 = 0.5 + atan2(worldNormal.z, worldNormal.x) / (2.0 * PI);
-  let v: f32 = 0.5 - asin(worldNormal.y) / PI;
-  return textureSampleLevel(environmentMap, environmentMapSampler, vec2<f32>(u, v), lod).rgb * envData.energy;
+// Must match the panorama convention used by environment.wgsl and irradianceMapGenerator.js
+fn directionToPanoramaUV(dir: vec3<f32>) -> vec2<f32> {
+  let u: f32 = 0.5 - atan2(dir.z, dir.x) / (2.0 * PI);
+  let v: f32 = 0.5 - asin(clamp(dir.y, -1.0, 1.0)) / PI;
+  return vec2<f32>(u, v);
+}
+
+fn getEnvironmentColor(worldDirection: vec3<f32>, lod: f32) -> vec3<f32> {
+  return textureSampleLevel(environmentMap, environmentMapSampler, directionToPanoramaUV(worldDirection), lod).rgb * envData.energy;
 }
 
 fn getIrradiance(worldNormal: vec3<f32>) -> vec3<f32> {
-  let u: f32 = 0.5 + atan2(worldNormal.z, worldNormal.x) / (2.0 * PI);
-  let v: f32 = 0.5 - asin(worldNormal.y) / PI;
-  return textureSample(irradianceMap, environmentMapSampler, vec2<f32>(u, v)).rgb * envData.energy;
+  return textureSample(irradianceMap, environmentMapSampler, directionToPanoramaUV(worldNormal)).rgb * envData.energy;
+}
+
+fn sampleTangentNormal(uv: vec2<f32>) -> vec3<f32> {
+  let sample: vec3<f32> = normalize(textureSample(normalMap, textureSampler, uv).xyz * 2.0 - 1.0);
+  return vec3<f32>(sample.xy * materialProperties.normalScale, sample.z);
+}
+
+// Whiteout blend: https://medium.com/@bgolus/normal-mapping-for-a-triplanar-shader-10bf39dca05a
+fn getTriplanarSurfaceNormal(surfaceNormal: vec3<f32>, worldFragmentPosition: vec3<f32>) -> vec3<f32> {
+  let n: vec3<f32> = normalize(surfaceNormal);
+
+  let blend: vec3<f32> = pow(abs(n), vec3<f32>(5.0));
+  let blendNormalized: vec3<f32> = blend / vec3<f32>(max(blend.x + blend.y + blend.z, 0.0001));
+
+  let xUV: vec2<f32> = worldFragmentPosition.zy * materialProperties.uvScale + materialProperties.uvOffset;
+  let yUV: vec2<f32> = worldFragmentPosition.xz * materialProperties.uvScale + materialProperties.uvOffset;
+  let zUV: vec2<f32> = worldFragmentPosition.xy * materialProperties.uvScale + materialProperties.uvOffset;
+
+  let tnX: vec3<f32> = sampleTangentNormal(xUV);
+  let tnY: vec3<f32> = sampleTangentNormal(yUV);
+  let tnZ: vec3<f32> = sampleTangentNormal(zUV);
+
+  let worldX: vec3<f32> = vec3<f32>(tnX.xy + n.zy, abs(tnX.z) * n.x).zyx;
+  let worldY: vec3<f32> = vec3<f32>(tnY.xy + n.xz, abs(tnY.z) * n.y).xzy;
+  let worldZ: vec3<f32> = vec3<f32>(tnZ.xy + n.xy, abs(tnZ.z) * n.z);
+
+  return normalize(worldX * blendNormalized.x + worldY * blendNormalized.y + worldZ * blendNormalized.z);
 }
 
 fn getSurfaceNormal(uv: vec2<f32>, surfaceNormal: vec3<f32>, worldFragmentPosition: vec3<f32>) -> vec3<f32> {
+  if ((materialProperties.flags & MATERIAL_FLAG_TRIPLANAR_MAPPING) != 0u) {
+    return getTriplanarSurfaceNormal(surfaceNormal, worldFragmentPosition);
+  }
+
   var normalMapSample: vec3<f32> = textureSample(normalMap, textureSampler, uv).xyz;
   // normalMapSample.y = 1.0 - normalMapSample.y;
   normalMapSample = normalize(normalMapSample * 2.0 - 1.0);
@@ -165,19 +204,43 @@ fn PBR(
   let R = reflect(-V, N);
   let NdotV = max(dot(N, V), 0.0);
 
-  let cookTorranceNumerator = D(N, H, roughness) * G(N, V, L, roughness) * Ks;
+  // GGX highlight vanishes at zero roughness for punctual lights, so clamp for direct lighting only
+  let lightRoughness = max(roughness, 0.045);
+  let cookTorranceNumerator = D(N, H, lightRoughness) * G(N, V, L, lightRoughness) * Ks;
   let cookTorranceDemominator = max(4.0 * max(dot(V, N), 0.0) * max(dot(L, N), 0.0), 0.0001);
   let cookTorrance = cookTorranceNumerator / cookTorranceDemominator;
 
   let BRDF = Kd * lambert + cookTorrance;
 
+  // Roughness-aware Fresnel for image-based lighting (split-sum approximation)
   let RAF = F0 + (max(vec3<f32>(1.0 - roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+  let kD = (vec3<f32>(1.0) - RAF) * (1.0 - metallic);
 
-  let diffuseIBL = Kd * albedo * getIrradiance(N);
-  let environment = RAF * getEnvironmentColor(R, (1.0 - roughness) * 10.0);
-  let lighting = BRDF * lightColor * max(dot(L, N), 0.0) * shadowFactor + environment;
+  let diffuseIBL = kD * albedo * getIrradiance(N);
+  let environment = RAF * getEnvironmentColor(R, roughness * 10.0);
+  let lighting = BRDF * lightColor * max(dot(L, N), 0.0) * shadowFactor;
 
-  return emission * materialProperties.emissionEnergy + diffuseIBL + lighting;
+  return emission + diffuseIBL + environment + lighting;
+}
+
+fn textureSampleExt(texture: texture_2d<f32>, uv: vec2<f32>, worldPos: vec3<f32>, geometricNormal: vec3<f32>) -> vec4<f32> {
+  if ((materialProperties.flags & MATERIAL_FLAG_TRIPLANAR_MAPPING) != 0u) {
+    let blend: vec3<f32> = pow(abs(normalize(geometricNormal)), vec3<f32>(5.0));
+    let blendSum: f32 = blend.x + blend.y + blend.z;
+    let blendNormalized: vec3<f32> = blend / vec3<f32>(max(blendSum, 0.0001));
+
+    let xProjection: vec2<f32> = worldPos.zy * materialProperties.uvScale + materialProperties.uvOffset;
+    let yProjection: vec2<f32> = worldPos.xz * materialProperties.uvScale + materialProperties.uvOffset;
+    let zProjection: vec2<f32> = worldPos.xy * materialProperties.uvScale + materialProperties.uvOffset;
+
+    let xSample: vec4<f32> = textureSample(texture, textureSampler, xProjection);
+    let ySample: vec4<f32> = textureSample(texture, textureSampler, yProjection);
+    let zSample: vec4<f32> = textureSample(texture, textureSampler, zProjection);
+
+    return xSample * blendNormalized.x + ySample * blendNormalized.y + zSample * blendNormalized.z;
+  } else {
+    return textureSample(texture, textureSampler, uv);
+  }
 }
 
 @fragment
@@ -188,31 +251,30 @@ fn fragment_main(
   @location(2) depthCoord: vec4<f32>,
   @location(3) worldPos: vec3<f32>
 ) -> @location(0) vec4<f32> {
-  let ormSample: vec3<f32> = textureSample(ormMap, textureSampler, uv).rgb;
-  let albedo: vec3<f32> = textureSample(albedoTexture, textureSampler, uv).rgb * materialProperties.albedoTint;
-  let emissive: vec3<f32> = textureSample(emissionMap, textureSampler, uv).rgb;
-  let roughness: f32 = 1.0 - ormSample.g;
-  let metallic: f32 = ormSample.b;
-  let shinness: f32 = 100.0;
+  let scaledUV: vec2<f32> = uv * materialProperties.uvScale + materialProperties.uvOffset;
 
   let cameraPosition: vec3<f32> = renderData.camera.transform[3].xyz;
   let cameraForward: vec3<f32> = getForwardFromView(renderData.camera.view);
   let shadowFactor: f32 = getShadowValue(shadowMap, shadowMapSampler, depthCoord);
 
-  let N: vec3<f32> = getSurfaceNormal(uv, normal, worldPos);
+  let N: vec3<f32> = getSurfaceNormal(scaledUV, normal, worldPos);
   let V: vec3<f32> = normalize(cameraPosition - worldPos);
   let L: vec3<f32> = getForwardFromView(renderData.directionalLight.view);
   let H: vec3<f32> = normalize(L + V);
 
-  var finalColor: vec3<f32> = albedo;
+  let ormSample: vec3<f32> = textureSampleExt(ormMap, scaledUV, worldPos, normal).rgb;
+  let albedo: vec3<f32> = textureSampleExt(albedoTexture, scaledUV, worldPos, normal).rgb * materialProperties.albedoTint;
+  let emissive: vec3<f32> = textureSampleExt(emissionMap, scaledUV, worldPos, normal).rgb;
+  let roughness: f32 = ormSample.g * materialProperties.roughness;
+  let metallic: f32 = ormSample.b * materialProperties.metallic;
 
-  finalColor = PBR(
+  var finalColor: vec3<f32> = PBR(
     N, V, L, H,
     renderData.directionalLight.color,
     albedo,
-    roughness * materialProperties.roughness,
-    metallic * materialProperties.metallic,
-    emissive + materialProperties.emissionTint,
+    roughness,
+    metallic,
+    (emissive + materialProperties.emissionTint) * materialProperties.emissionEnergy,
     shadowFactor,
   );
 

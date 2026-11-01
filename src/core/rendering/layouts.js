@@ -122,6 +122,13 @@ export const Layouts = new class Layouts {
           sampleType: 'depth',
         }
       },
+      {
+        binding: 3,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: {
+          type: 'uniform',
+        }
+      },
     ]
   }
 

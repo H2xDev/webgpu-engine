@@ -17,7 +17,7 @@ export class Environment extends Entity3D {
   /** @type { GPUTexture } */
   irradianceMap;
 
-  #energy = 2.0;
+  #energy = 1.0;
 
   get energy() {
     return this.#energy;
@@ -43,6 +43,16 @@ export class Environment extends Entity3D {
     this.energy = this.#energy;
     this.#initIrradianceMap();
     this.#initBindGroup();
+  }
+
+  /**
+    * Creates an Environment instance from a texture path.
+    *
+    * @param { string } path
+    * @returns { Promise<Environment> }
+    */
+  static async createFromTexture(path) {
+    return Texture.load(path).then(texture => new Environment(texture));
   }
 
   enterTree() {

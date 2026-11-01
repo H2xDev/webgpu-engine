@@ -5,7 +5,8 @@ const importMap = {
     "@core/resources": "/src/core/resources/index.js",
     "@core": "/src/core/index.js",
     "@game/": "/src/game/",
-    "gl-matrix": "/src/core/gl-matrix/index.js"
+    "gl-matrix": "/src/core/gl-matrix/index.js",
+    "tweakpane": "https://cdn.jsdelivr.net/npm/tweakpane@4.0.5/dist/tweakpane.min.js"
   }
 }
 

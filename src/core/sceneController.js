@@ -7,7 +7,18 @@ export const SceneController = new class SceneController {
   currentScene = null;
 
   /** @param { Scene } scene */
+  validateScene(scene) {
+    const overridesUpdate = scene.update !== Scene.prototype.update;
+
+    if (overridesUpdate && !/\bsuper\.update\s*\(/.test(scene.update.toString())) {
+      throw new Error(`Scene "${scene.constructor.name}" overrides update() but does not call super.update(dt)`);
+    }
+  }
+
+  /** @param { Scene } scene */
   async changeScene(scene) {
+    this.validateScene(scene);
+
     if (this.currentScene) {
       await this.currentScene.exit();
       this.currentScene = null;

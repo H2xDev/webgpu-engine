@@ -30,3 +30,9 @@ export const getFolderPath = (path) => {
 
 export const TO_RAD = 1 / 180 * Math.PI;
 export const TO_DEG = 1 * 180 / Math.PI;
+
+let _idCounter = 0;
+export const createId = () => {
+  _idCounter++;
+  return _idCounter;
+}

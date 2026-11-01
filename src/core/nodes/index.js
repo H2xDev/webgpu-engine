@@ -6,3 +6,4 @@ export * from "./orbitControl.js";
 export * from "./directionalLight.js";
 export * from "./environment.js";
 export * from "./meshInstance.js";
+export * from "./postProcess.js";

@@ -2,7 +2,8 @@ fn shadowPCF(
   shadowMap: texture_depth_2d,
   shadowMapSampler: sampler_comparison,
   uv: vec2<f32>,
-  depth: f32
+  depth: f32,
+  depthGradient: vec2<f32>
 ) -> f32 {
   var shadow: f32 = 0.0;
   let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0));
@@ -17,7 +18,7 @@ fn shadowPCF(
         shadowMap,
         shadowMapSampler,
         uv + offset,
-        depth - 0.001
+        depth + dot(offset, depthGradient) - 0.005
       );
       count += 1.0;
     }
@@ -35,7 +36,22 @@ fn getShadowValue(
   let shadowUV: vec2<f32> = vec2<f32>(shadowProj.x * 0.5 + 0.5, shadowProj.y * 0.5 + 0.5);
 
   let shadowCoord = vec2<f32>(shadowUV.x, 1.0 - shadowUV.y);
-  var shadowValue: f32 = shadowPCF(shadowMap, shadowMapSampler, shadowCoord, shadowProj.z);
+  // Receiver-plane depth gradient in shadow-map UV space, so each PCF tap compares against the surface's own depth.
+  let duvDx = dpdx(shadowCoord);
+  let duvDy = dpdy(shadowCoord);
+  let dzDx = dpdx(shadowProj.z);
+  let dzDy = dpdy(shadowProj.z);
+  let det = duvDx.x * duvDy.y - duvDx.y * duvDy.x;
+  var gradient = vec2<f32>(0.0);
+  if (abs(det) > 1e-12) {
+    gradient = vec2<f32>(
+      dzDx * duvDy.y - dzDy * duvDx.y,
+      dzDy * duvDx.x - dzDx * duvDy.x
+    ) / det;
+  }
+  gradient = clamp(gradient, vec2<f32>(-10.0), vec2<f32>(10.0));
+
+  var shadowValue: f32 = shadowPCF(shadowMap, shadowMapSampler, shadowCoord, shadowProj.z, gradient);
 
   let outside = any(shadowCoord < vec2<f32>(0.0))
     || any(shadowCoord > vec2<f32>(1.0))

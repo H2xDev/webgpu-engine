@@ -1,7 +1,8 @@
 import { vec3, mat4 } from '../gl-matrix/index.js';
-import { TO_RAD } from '../utils.js';
+import { TO_RAD, createId } from '../utils.js';
 
 export class Entity3D {
+  id = createId();
   root = false;
 
   /** @type { ReturnType<mat4.create> } */
@@ -88,31 +89,6 @@ export class Entity3D {
     return vec3.fromValues(-this.transform[8], -this.transform[9], -this.transform[10]);
   }
 
-  set forward(value) {
-    value = vec3.normalize(vec3.create(), value);
-
-    const up = this.up;
-    const right = vec3.create();
-    vec3.cross(right, up, value);
-    vec3.normalize(right, right);
-
-    const newUp = vec3.create();
-    vec3.cross(newUp, value, right);
-    vec3.normalize(newUp, newUp);
-
-    this.transform[0] = right[0];
-    this.transform[1] = right[1];
-    this.transform[2] = right[2];
-
-    this.transform[4] = newUp[0];
-    this.transform[5] = newUp[1];
-    this.transform[6] = newUp[2];
-
-    this.transform[8] = -value[0];
-    this.transform[9] = -value[1];
-    this.transform[10] = -value[2];
-  }
-
   get up() {
     return vec3.fromValues(this.transform[4], this.transform[5], this.transform[6]);
   }
@@ -146,6 +122,11 @@ export class Entity3D {
     }
   }
 
+  get globalPosition() {
+    const globalTransform = this.globalTransform;
+    return vec3.fromValues(globalTransform[12], globalTransform[13], globalTransform[14]);
+  }
+
   /**
     * @param { ReturnType<vec3.create> } axis
     * @param { number } angle
@@ -156,6 +137,27 @@ export class Entity3D {
     this.position = [0, 0, 0];
     mat4.multiply(this.transform, rotation, this.transform);
     this.position = tempPosition;
+  }
+
+  /**
+    * Rotates the entity to face a target point in world space.
+    * @param { ReturnType<vec3.create> } target
+    * @param { ReturnType<vec3.create> } up
+    */
+  lookAt(target, up = [0, 1, 0]) {
+    const eye = vec3.clone(this.position);
+    const direction = vec3.sub(vec3.create(), eye, target);
+    if (vec3.squaredLength(direction) < 1e-12) return;
+
+    vec3.normalize(direction, direction);
+    let safeUp = vec3.normalize(vec3.create(), up);
+
+    // Parallel direction and up produce a zero cross product, which makes the matrix singular
+    if (vec3.squaredLength(vec3.cross(vec3.create(), direction, safeUp)) < 1e-8) {
+      safeUp = Math.abs(direction[1]) < 0.99 ? vec3.fromValues(0, 1, 0) : vec3.fromValues(0, 0, 1);
+    }
+
+    this.transform = mat4.targetTo(this.transform, eye, target, safeUp);
   }
 
   /**

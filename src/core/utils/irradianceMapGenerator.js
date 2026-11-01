@@ -6,7 +6,7 @@ const SOURCE_CODE = /* wgsl */`
   const PI = 3.14159265358979323846;
 
   fn samplePanorama(direction: vec3<f32>) -> vec4<f32> {
-    let u = atan2(direction.z, direction.x) / (2.0 * PI) + 0.5;
+    let u = 0.5 - atan2(direction.z, direction.x) / (2.0 * PI);
     let v = acos(clamp(direction.y, -1.0, 1.0)) / PI;
 
     return textureSampleLevel(inputTexture, inputSampler, vec2<f32>(u, v), 0.0);

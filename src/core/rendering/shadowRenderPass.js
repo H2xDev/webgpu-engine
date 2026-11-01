@@ -101,7 +101,7 @@ export class ShadowRenderPass extends RenderPass {
     }
 
     const shadowPass = commandEncoder.beginRenderPass(this.renderPassDescriptor);
-    DirectionalLight.current.writeToBuffer(this.uniformBuffer);
+    DirectionalLight.current.writeToBuffer(this.device, this.uniformBuffer);
 
     shadowPass.setPipeline(this.pipeline);
     renderCallback(shadowPass, this.renderBindGroup);

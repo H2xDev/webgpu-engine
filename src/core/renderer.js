@@ -9,6 +9,7 @@ import { Layouts } from "./rendering/layouts.js";
 import { EnvironmentRenderPass } from "./rendering/environmentRenderPass.js";
 import { KawaseBlur } from "./rendering/kawaseBlur.js";
 import { IrradianceMapGenerator } from "./utils/irradianceMapGenerator.js";
+import { MipmapGenerator } from "./utils/mipmapGenerator.js";
 
 export const Renderer = new class Renderer {
   /** @type { GPUDevice } */
@@ -61,7 +62,10 @@ export const Renderer = new class Renderer {
     assert(this.adapter, "The adapter is not initialized");
     assert(this.device, "The device is not initialized")
 
+    MipmapGenerator.init(this.device);
     Layouts.init(this.device);
+    Texture.init(this.device);
+    Material.init(this.device);
 
     this.context.configure({
       device: this.device,
@@ -102,8 +106,7 @@ export const Renderer = new class Renderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    const texture = await Texture.load("/test.png");
-    this.defaultMaterial = new Material().init();
+    this.defaultMaterial = new Material();
 
     this.shadowRenderPass.assignObjectBuffer(this.objectBuffer);
     this.mainRenderPass.assignObjectBuffer(this.objectBuffer);
