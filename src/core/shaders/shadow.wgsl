@@ -1,5 +1,7 @@
 override REVERSED_Z: bool = false;
 
+const BIAS: f32 = 0.001;
+
 fn shadowPCF(
   shadowMap: texture_depth_2d,
   shadowMapSampler: sampler_comparison,
@@ -13,7 +15,7 @@ fn shadowPCF(
   let radius: i32 = 3;
   var count: f32 = 0.0;
 
-  let epsilon: f32 = select(-0.005, 0.005, REVERSED_Z);
+  let epsilon: f32 = select(-BIAS, BIAS, REVERSED_Z);
 
   for (var x: i32 = -radius; x <= radius; x++) {
     for (var y: i32 = -radius; y <= radius; y++) {
