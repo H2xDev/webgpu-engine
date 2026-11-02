@@ -23,15 +23,20 @@ struct PostProcessParameters {
 @binding(0) @group(1) var glowTexture: texture_2d<f32>;
 @binding(1) @group(1) var glowSampler: sampler;
 
-
+override REVERSED_Z: bool = false;
 
 const GOLDEN_ANGLE: f32 = 2.39996323;
 
-// Camera uses mat4.perspective (GL-style NO), so stored depth d = (f+n)/(f-n) - 2fn/((f-n)z)
+// Camera uses mat4.perspectiveZO
 fn linearDepth(d: f32) -> f32 {
   let near = postProcessParams.cameraNear;
   let far = postProcessParams.cameraFar;
-  return 2.0 * near * far / ((far + near) - d * (far - near));
+
+  if (REVERSED_Z) {
+    return near * far / (near + d * (far - near));
+  }
+
+  return near * far / (far - d * (far - near));
 }
 
 fn loadDepth(uv: vec2<f32>) -> f32 {

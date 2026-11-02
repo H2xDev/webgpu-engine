@@ -1,3 +1,4 @@
+import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT } from "../convention.js";
 import { DirectionalLight } from "../nodes/directionalLight.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
@@ -12,7 +13,7 @@ export class ShadowRenderPass extends RenderPass {
     colorAttachments: [],
     depthStencilAttachment: {
       view: null,
-      depthClearValue: 1.0,
+      depthClearValue: DEPTH_CLEAR,
       depthLoadOp: "clear",
       depthStoreOp: "store",
     },
@@ -135,14 +136,14 @@ export class ShadowRenderPass extends RenderPass {
   #initDepthTexture() {
     this.depthTexture = this.device.createTexture({
       size: [4096, 4096, 1],
-      format: "depth32float",
+      format: DEPTH_FORMAT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
 
     this.depthTextureView = this.depthTexture.createView();
     this.renderPassDescriptor.depthStencilAttachment.view = this.depthTextureView;
     this.depthTextureSampler = this.device.createSampler({
-      compare: "less",
+      compare: DEPTH_COMPARE,
     });
   }
 
@@ -164,9 +165,9 @@ export class ShadowRenderPass extends RenderPass {
         cullMode: "back",
       },
       depthStencil: {
-        format: "depth32float",
+        format: DEPTH_FORMAT,
         depthWriteEnabled: true,
-        depthCompare: "less",
+        depthCompare: DEPTH_COMPARE,
       },
     });
   }

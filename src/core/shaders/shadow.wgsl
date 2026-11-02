@@ -1,3 +1,5 @@
+override REVERSED_Z: bool = false;
+
 fn shadowPCF(
   shadowMap: texture_depth_2d,
   shadowMapSampler: sampler_comparison,
@@ -11,6 +13,8 @@ fn shadowPCF(
   let radius: i32 = 3;
   var count: f32 = 0.0;
 
+  let epsilon: f32 = select(-0.005, 0.005, REVERSED_Z);
+
   for (var x: i32 = -radius; x <= radius; x++) {
     for (var y: i32 = -radius; y <= radius; y++) {
       let offset: vec2<f32> = vec2<f32>(f32(x), f32(y)) * texel_size;
@@ -18,7 +22,7 @@ fn shadowPCF(
         shadowMap,
         shadowMapSampler,
         uv + offset,
-        depth + dot(offset, depthGradient) - 0.005
+        depth + dot(offset, depthGradient) + epsilon
       );
       count += 1.0;
     }

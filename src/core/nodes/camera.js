@@ -2,6 +2,7 @@ import { mat4, vec3 } from "gl-matrix";
 
 import { TO_RAD } from "../utils.js";
 import { Entity3D } from "./entity3d.js";
+import { REVERSED_Z } from "../convention.js";
 
 export class Camera3D extends Entity3D {
   /** @type { Camera3D } */
@@ -83,12 +84,16 @@ export class Camera3D extends Entity3D {
   }
 
   updateProjection() {
+    const near = REVERSED_Z ? this.far : this.near;
+    const far  = REVERSED_Z ? this.near : this.far;
+
     if (this.type === "perspective") {
-      mat4.perspective(this.projection, TO_RAD * this.fov, this.aspect, this.near, this.far);
+      mat4.perspectiveZO(this.projection, TO_RAD * this.fov, this.aspect, near, far);
     } else if (this.type === "orthographic") {
       const halfHeight = this.orthoDistance * Math.tan(TO_RAD * this.fov / 2);
       const halfWidth = halfHeight * this.aspect;
-      mat4.orthoZO(this.projection, -halfWidth, halfWidth, -halfHeight, halfHeight, this.near, this.far);
+
+      mat4.orthoZO(this.projection, -halfWidth, halfWidth, -halfHeight, halfHeight, near, far);
     }
   }
 

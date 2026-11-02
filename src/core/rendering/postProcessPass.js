@@ -1,3 +1,5 @@
+import { REVERSED_Z } from "../convention.js";
+
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
 import { MainRenderPass } from "./mainRenderPass.js";
@@ -142,6 +144,9 @@ export class PostProcessPass extends RenderPass {
         module: fragmentShader,
         entryPoint: "fragment_main",
         targets: [{ format: navigator.gpu.getPreferredCanvasFormat() }],
+        constants: {
+          REVERSED_Z: Number(REVERSED_Z),
+        }
       },
     });
   }

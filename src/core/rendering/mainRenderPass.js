@@ -1,3 +1,5 @@
+import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT, REVERSED_Z } from "../convention.js";
+
 import { Renderer } from "../renderer.js";
 import { Camera3D } from "../nodes/camera.js";
 import { DirectionalLight } from "../nodes/directionalLight.js";
@@ -214,8 +216,6 @@ export class MainRenderPass extends RenderPass {
   }
 
   #initRenderPassDescriptor() {
-    const { context } = this;
-
     this.renderPassDescriptor = {
       label: "Main Render Pass",
       colorAttachments: [{
@@ -226,7 +226,7 @@ export class MainRenderPass extends RenderPass {
       }],
       depthStencilAttachment: {
         view: this.depthTextureView,
-        depthClearValue: 1.0,
+        depthClearValue: DEPTH_CLEAR,
         depthLoadOp: "clear",
         depthStoreOp: "store",
       },
@@ -239,7 +239,7 @@ export class MainRenderPass extends RenderPass {
 
     this.depthTexture = device.createTexture({
       size: [width, height, 1],
-      format: "depth24plus",
+      format: DEPTH_FORMAT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
 
@@ -249,7 +249,7 @@ export class MainRenderPass extends RenderPass {
       this.depthTexture.destroy();
       this.depthTexture = device.createTexture({
         size: [window.innerWidth, window.innerHeight, 1],
-        format: "depth24plus",
+        format: DEPTH_FORMAT,
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
       this.depthTextureView = this.depthTexture.createView();
@@ -279,16 +279,19 @@ export class MainRenderPass extends RenderPass {
       fragment: {
         module: shaderModule,
         entryPoint: "fragment_main",
-        targets: [{ format: "rgba16float" }]
+        targets: [{ format: "rgba16float" }],
+        constants: {
+          REVERSED_Z: Number(REVERSED_Z),
+        },
       },
       primitive: {
         topology: "triangle-list",
         cullMode: "back",
       },
       depthStencil: {
-        format: "depth24plus",
+        format: DEPTH_FORMAT,
         depthWriteEnabled: true,
-        depthCompare: "less",
+        depthCompare: DEPTH_COMPARE,
       },
     })
   }

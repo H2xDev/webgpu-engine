@@ -1,5 +1,7 @@
 import { mat4, vec3 } from 'gl-matrix';
 import { Renderer } from '../renderer.js';
+import { REVERSED_Z } from '../convention.js';
+
 import { Camera3D } from './camera.js';
 
 export class DirectionalLight extends Camera3D {
@@ -14,7 +16,9 @@ export class DirectionalLight extends Camera3D {
   set distance(value) {
     this.distance_ = value;
     const half = this.size / 2;
-    this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, 0.0001, this.distance * 3);
+    const near = REVERSED_Z ? this.distance * 3 : 0.0001;
+    const far = REVERSED_Z ? 0.0001 : this.distance * 3;
+    this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, near, far);
   }
 
   /** @type { DirectionalLight } */
@@ -26,10 +30,7 @@ export class DirectionalLight extends Camera3D {
   constructor(size) {
     super();
     this.size = size || this.size;
-    const half = this.size / 2;
     this.distance = this.size;
-    // Light sits `distance` behind the camera, so depth range is centered on the camera position
-    this.projection = mat4.orthoZO(mat4.create(), -half, half, -half, half, 0.0001, this.distance * 3);
   }
 
   enterTree() {
