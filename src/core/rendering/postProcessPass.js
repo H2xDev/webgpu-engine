@@ -97,7 +97,6 @@ export class PostProcessPass extends RenderPass {
   #initBindGroup() {
     this.sceneView = MainRenderPass.instance.sceneTextureView;
     this.depthView = MainRenderPass.instance.depthTextureView;
-    console.log("PostProcessPass: initBindGroup", this.currentUniformBuffer);
     this.bindGroup = this.device.createBindGroup({
       layout: Layouts.postProcessLayout,
       entries: [
