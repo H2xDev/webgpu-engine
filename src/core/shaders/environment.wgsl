@@ -16,6 +16,8 @@ struct EnvironmentData {
 
 const PI: f32 = 3.1415926535897932384626433832795;
 
+#include "panorama"
+
 @fragment
 fn fragment_main(
   @builtin(position) position: vec4<f32>,
@@ -30,8 +32,9 @@ fn fragment_main(
   ));
 
   let rayWorld = normalize((envData.cameraData.transform * vec4<f32>(rayView, 0.0)).xyz);
-  let u = (0.5 - atan2(rayWorld.z, rayWorld.x) / (2.0 * PI));
-  let v = (0.5 - asin(rayWorld.y) / PI);
+  let panoramaUV = directionToUV(rayWorld);
+  let u = panoramaUV.x;
+  let v = panoramaUV.y;
 
   // atan2 wraps at the seam, which makes the derivatives huge and selects the lowest mip.
   // Use derivatives of a phase-shifted u there, and pick whichever is continuous.

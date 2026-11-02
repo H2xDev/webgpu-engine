@@ -95,20 +95,14 @@ fn vertex_main(
 
 #include "cotangentFrame"
 #include "shadow"
-
-// Must match the panorama convention used by environment.wgsl and irradianceMapGenerator.js
-fn directionToPanoramaUV(dir: vec3<f32>) -> vec2<f32> {
-  let u: f32 = 0.5 - atan2(dir.z, dir.x) / (2.0 * PI);
-  let v: f32 = 0.5 - asin(clamp(dir.y, -1.0, 1.0)) / PI;
-  return vec2<f32>(u, v);
-}
+#include "panorama"
 
 fn getEnvironmentColor(worldDirection: vec3<f32>, lod: f32) -> vec3<f32> {
-  return textureSampleLevel(environmentMap, environmentMapSampler, directionToPanoramaUV(worldDirection), lod).rgb * envData.energy;
+  return textureSampleLevel(environmentMap, environmentMapSampler, directionToUV(worldDirection), lod).rgb * envData.energy;
 }
 
 fn getIrradiance(worldNormal: vec3<f32>) -> vec3<f32> {
-  return textureSample(irradianceMap, environmentMapSampler, directionToPanoramaUV(worldNormal)).rgb * envData.energy;
+  return textureSample(irradianceMap, environmentMapSampler, directionToUV(worldNormal)).rgb * envData.energy;
 }
 
 fn sampleTangentNormal(uv: vec2<f32>) -> vec3<f32> {
