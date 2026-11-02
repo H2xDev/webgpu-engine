@@ -35,6 +35,7 @@ export class PostProcessPass extends RenderPass {
   /** @type { GPUBuffer } */
   fallbackPostProcessUniformBuffer;
 
+  /** @type { GPUBuffer } */
   #currentUniformBuffer = null;
 
   get currentUniformBuffer() {

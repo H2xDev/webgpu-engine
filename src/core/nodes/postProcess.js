@@ -13,7 +13,7 @@ export class PostProcess extends Entity3D {
   /** @param { PostProcess } value */
   static set current(value) {
     PostProcess.current_ = value;
-    PostProcessPass.instance.currentUniformBuffer = value.uniformBuffer;
+    PostProcessPass.instance.currentUniformBuffer = value?.uniformBuffer ?? null;
   }
 
   #aaEdgeThreshold = 0.02;
