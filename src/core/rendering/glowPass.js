@@ -92,7 +92,7 @@ export const GlowPass = new class GlowPass {
 
   // TODO: Refactor this method
   #initGlowTexture() {
-    const downScale = 2;
+    const downScale = 4;
     this.glowTexture = this.device.createTexture({
       size: [this.context.canvas.width / downScale, this.context.canvas.height / downScale],
       format: 'rgba16float',

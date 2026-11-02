@@ -13,12 +13,12 @@ fn fragment_main(
 ) -> @location(0) vec4<f32> {
   let dimensions = vec2<f32>(textureDimensions(inputTexture));
   let texelSize = vec2<f32>(1.0) / dimensions;
-  let offset = (f32(blurParams.passIndex) + 1.0) * 0.1;
+  let offset = texelSize * (f32(blurParams.passIndex) + 0.5);
 
-  var sample = textureSample(inputTexture, inputSampler, uv + texelSize * offset);
-  sample += textureSample(inputTexture, inputSampler, uv + vec2f(-texelSize.x, texelSize.y) * offset);
-  sample += textureSample(inputTexture, inputSampler, uv - texelSize * offset);
-  sample += textureSample(inputTexture, inputSampler, uv + vec2f(texelSize.x, -texelSize.y) * offset);
+  var sample = textureSample(inputTexture, inputSampler, uv + offset);
+  sample += textureSample(inputTexture, inputSampler, uv + vec2f(-offset.x, offset.y));
+  sample += textureSample(inputTexture, inputSampler, uv - offset);
+  sample += textureSample(inputTexture, inputSampler, uv + vec2f(offset.x, -offset.y));
   sample *= 0.25;
 
   return sample;

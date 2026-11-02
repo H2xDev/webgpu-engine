@@ -1,9 +1,20 @@
+/** @typedef { number } PassNumber */
+
+/** @typedef PassInputData
+  *
+  * @property { GPUBindGroup } bindGroup
+  * @property { GPUTextureView } inputTexture
+  * @property { GPUTextureView } outputTexture
+  * @property { GPUBuffer } uniformBuffer
+  */
+
+import { Texture } from "@core/resources";
 import { ShaderManager } from "../shaderManager.js";
 
-const MAX_PASSES = 7;
+const MAX_PASSES = 8;
 
 export const KawaseBlur = new class KawaseBlur {
-  /** @type { Map<GPUTextureView, GPUBindGroup> } */
+  /** @type { Map<PassNumber, PassInputData> } */
   bindGroupCache = new Map();
 
   /** @type { Map<string, GPUTextureView> } */
@@ -15,14 +26,14 @@ export const KawaseBlur = new class KawaseBlur {
   /** @type { GPURenderPipeline } */
   pipeline;
 
-  /** @type { GPUBindGroup } */
-  bindGroup;
+  /** @type { GPUBindGroup[] } */
+  bindGroups;
+
+  /** @type { GPUBuffer[] } */
+  uniformBuffers;
 
   /** @type { GPUDevice } */
   device;
-
-  /** @type { GPUBuffer } */
-  uniformBuffer;
 
   /** @type { GPUTextureView } */
   get pingTextureView() {
@@ -52,17 +63,6 @@ export const KawaseBlur = new class KawaseBlur {
   /** @param { GPUDevice } device*/
   async init(device) {
     this.device = device;
-
-    this.defaultSampler = this.device.createSampler({
-      minFilter: "linear",
-      magFilter: "linear",
-    });
-
-    this.uniformBuffer = this.device.createBuffer({
-      label: 'Kawase blur uniform buffer',
-      size: 16,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM
-    });
 
     await this.#initPipeline();
   }
@@ -125,48 +125,16 @@ export const KawaseBlur = new class KawaseBlur {
     return view;
   }
 
-  /** @param { GPUTextureView } inputTextureView */
-  #getInputBindGroup(inputTextureView) {
-    if (this.bindGroupCache.has(inputTextureView)) {
-      return this.bindGroupCache.get(inputTextureView);
-    }
-
-    const bindGroup = this.device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: inputTextureView
-        },
-        {
-          binding: 1,
-          resource: this.defaultSampler,
-        },
-        {
-          binding: 2,
-          resource: this.uniformBuffer,
-        }
-      ]
-    });
-
-    this.bindGroupCache.set(inputTextureView, bindGroup);
-    return bindGroup;
-  }
-
   /**
-   * @param { number } width
-   * @param { number } height
-   */
-  setTextureSize(width, height) {
-    this.size = [width, height]
-  }
-
-  /**
-   * @param { GPUCommandEncoder } commandEncoder
-   * @param { GPUTextureView } inoutTextureView
-   */
-  processTexture(commandEncoder, inoutTextureView, pass = 0) {
+    * @param { PassNumber } pass
+    * @param { GPUTextureView } inoutTextureView
+    */
+  #getInputBindGroup(pass = 0, inoutTextureView) {
     const isLastPass = pass === MAX_PASSES - 1;
+
+    if (this.bindGroupCache.has(pass)) {
+      return this.bindGroupCache.get(pass);
+    }
 
     const inputTexture = pass === 0
       ? inoutTextureView
@@ -180,13 +148,76 @@ export const KawaseBlur = new class KawaseBlur {
         ? this.pingTextureView
         : this.pongTextureView;
 
-    const bindGroup = this.#getInputBindGroup(inputTexture);
+    const uniformBufferData = new Uint32Array([ pass ]);
+    const uniformBuffer = this.device.createBuffer({
+      size: 4,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    })
+
+    const bindGroup = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: inputTexture
+        },
+        {
+          binding: 1,
+          resource: Texture.DEFAULT_SAMPLER,
+        },
+        {
+          binding: 2,
+          resource: uniformBuffer,
+        }
+      ]
+    });
+
+    const passInputData = {
+      bindGroup,
+      uniformBuffer,
+      inputTexture,
+      outputTexture,
+    }
+
+    this.device.queue.writeBuffer(uniformBuffer, 0, uniformBufferData)
+    this.bindGroupCache.set(pass, passInputData);
+
+    return passInputData;
+  }
+
+  #cleanupCache() {
+    for (const pass of this.bindGroupCache.keys()) {
+      const { uniformBuffer } = this.bindGroupCache.get(pass);
+      uniformBuffer.destroy()
+    }
+
+    this.bindGroupCache.clear();
+  }
+
+  /**
+   * @param { number } width
+   * @param { number } height
+   */
+  setTextureSize(width, height) {
+    if (this.size[0] === width && this.size[1] === height) return;
+
+    this.size = [width, height]
+    this.#cleanupCache();
+  }
+
+  /**
+   * @param { GPUCommandEncoder } commandEncoder
+   * @param { GPUTextureView } inoutTextureView
+   * @param { PassNumber } pass
+   */
+  processTexture(commandEncoder, inoutTextureView, pass = 0) {
+    const isLastPass = pass === MAX_PASSES - 1;
+
+    const { outputTexture, bindGroup } = this.#getInputBindGroup(pass, inoutTextureView);
 
     this.renderPassDescriptor.colorAttachments[0].view = isLastPass
       ? inoutTextureView
       : outputTexture;
-
-    this.device.queue.writeBuffer(this.uniformBuffer, 0, new Uint32Array([pass]));
 
     const rp = commandEncoder.beginRenderPass(this.renderPassDescriptor);
     rp.setPipeline(this.pipeline);

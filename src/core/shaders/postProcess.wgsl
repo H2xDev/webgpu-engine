@@ -92,7 +92,7 @@ fn circleOfConfusion(uv: vec2<f32>) -> f32 {
   return clamp(abs(1.0 / postProcessParams.dofFocusDistance - 1.0 / z) * postProcessParams.dofAperture, 0.0, 1.0);
 }
 
-fn depthOfField(uv: vec2<f32>, center: vec3<f32>) -> vec3<f32> {
+fn depthOfField(uv: vec2<f32>, center: vec3<f32>, screenTex: texture_2d<f32>) -> vec3<f32> {
   let coc = circleOfConfusion(uv);
   if (coc <= 0.0) {
     return center;
@@ -114,7 +114,7 @@ fn depthOfField(uv: vec2<f32>, center: vec3<f32>) -> vec3<f32> {
     // A neighbour only bleeds onto this pixel if its own blur disc reaches this far
     let sampleRadius = circleOfConfusion(sampleUV) * maxRadius;
     let w = clamp(sampleRadius - dist + 1.0, 0.0, 1.0);
-    sum += textureSampleLevel(screenTexture, screenSampler, sampleUV, 0.0).rgb * w;
+    sum += textureSampleLevel(screenTex, screenSampler, sampleUV, 0.0).rgb * w;
     weightSum += w;
   }
   return sum / weightSum;
@@ -132,8 +132,11 @@ fn vignette(uv: vec2<f32>, dims: vec2<f32>) -> f32 {
 @fragment
 fn fragment_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
   var screenSample: vec4<f32> = depthAA(uv);
-  screenSample = vec4<f32>(depthOfField(uv, screenSample.rgb), screenSample.a);
-  let glowSample: vec4<f32> = textureSample(glowTexture, glowSampler, uv);
+  screenSample = vec4<f32>(depthOfField(uv, screenSample.rgb, screenTexture), screenSample.a);
+
+  var glowSample: vec4<f32> = textureSample(glowTexture, glowSampler, uv);
+  glowSample = vec4<f32>(depthOfField(uv, glowSample.rgb, glowTexture), glowSample.a);
+  // glowSample /= f32(postProcessParams.dofSamples);
 
   let color = screenSample + glowSample;
   let dims = vec2<f32>(textureDimensions(screenTexture));

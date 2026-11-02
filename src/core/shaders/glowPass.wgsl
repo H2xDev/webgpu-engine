@@ -9,7 +9,7 @@ fn main(
   let color = textureSample(screenTexture, screenSampler, uv).rgb;
 
   // TODO: Make these parameters configurable
-  let threshold = 2.5;
+  let threshold = 0.7;
   let knee = 0.1;
 
   let luminance = dot(color, vec3f(0.2126, 0.7152, 0.0722));
