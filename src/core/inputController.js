@@ -40,12 +40,24 @@ export const InputController = new class InputController {
     domElement.addEventListener("mousemove", (event) => {
       this.mousePos[0] = event.clientX;
       this.mousePos[1] = event.clientY;
-      this.mouseMovement[0] = event.movementX;
-      this.mouseMovement[1] = event.movementY;
+      this.mouseMovement[0] += event.movementX;
+      this.mouseMovement[1] += event.movementY;
     });
 
     domElement.addEventListener("wheel", (event) => {
-      this.mouseWheel += event.deltaY;
+      let delta = event.deltaY;
+
+      switch (event.deltaMode) {
+        case WheelEvent.DOM_DELTA_PAGE:
+          delta *= window.innerHeight;
+          break;
+
+        case WheelEvent.DOM_DELTA_LINE:
+          delta *= 16;
+          break;
+      }
+
+      this.mouseWheel += delta;
     }, { passive: true });
 
     domElement.addEventListener("mousedown", (e) => {
