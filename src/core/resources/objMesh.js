@@ -87,11 +87,12 @@ class ObjMaterialImporter {
     const materials = new Map();
     for (const [name, def] of defs) {
       const albedo = (def.albedoMap && await loadTexture(def.albedoMap));
-      const normal = def.normalMap ? await loadTexture(def.normalMap) : null;
+      const normalMap = def.normalMap ? await loadTexture(def.normalMap) : null;
 
-      if (albedo && normal) {
-        materials.set(name, new Material().init(albedo, normal));
-      }
+      materials.set(name, new Material({
+        albedo,
+        normalMap,
+      }));
     }
 
     return materials;

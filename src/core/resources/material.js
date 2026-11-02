@@ -52,16 +52,24 @@ export class Material {
   static device;
 
   /** @type { Texture } */
-  albedo;
+  #albedo;
+  get albedo() { return this.#albedo }
+  set albedo(value) {  this.#albedo = value; this.#initBindGroup() }
 
   /** @type { Texture } */
-  normalMap;
+  #normalMap;
+  get normalMap() { return this.#normalMap }
+  set normalMap(value) {  this.#normalMap = value; this.#initBindGroup() }
 
   /** @type { Texture } */
-  ormMap;
+  #ormMap;
+  get ormMap() { return this.#ormMap }
+  set ormMap(value) {  this.#ormMap = value; this.#initBindGroup()  }
 
   /** @type { Texture } */
-  emissionMap;
+  #emissionMap;
+  get emissionMap() { return this.#emissionMap }
+  set emissionMap(value) {  this.#emissionMap = value; this.#initBindGroup()  }
 
   /** @type { GPUBindGroup } */
   bindGroup;
@@ -185,8 +193,7 @@ export class Material {
 
 
   duplicate() {
-    return Object.assign(new Material(), {
-      bindGroup: this.bindGroup,
+    return new Material({
       albedo: this.albedo,
       normalMap: this.normalMap,
       ormMap: this.ormMap,
@@ -197,6 +204,9 @@ export class Material {
       albedoTint: [...this.#albedoTint],
       emissionTint: [...this.#emissionTint],
       emissionEnergy: this.#emissionEnergy,
+      uvScale: this.uvScale,
+      uvOffset: [...this.uvOffset],
+      flags: this.flags,
     })
   }
 
@@ -237,10 +247,10 @@ export class Material {
     * @param { Partial<MaterialOptions> } options
     */
   #assignOptions(options) {
-    if (options.albedo) this.albedo = options.albedo;
-    if (options.normalMap) this.normalMap = options.normalMap;
-    if (options.ormMap) this.ormMap = options.ormMap;
-    if (options.emissionMap) this.emissionMap = options.emissionMap;
+    if (options.albedo) this.#albedo = options.albedo;
+    if (options.normalMap) this.#normalMap = options.normalMap;
+    if (options.ormMap) this.#ormMap = options.ormMap;
+    if (options.emissionMap) this.#emissionMap = options.emissionMap;
     if (options.normalScale !== undefined) this.#normalScale = options.normalScale;
     if (options.metallic !== undefined) this.#metallic = options.metallic;
     if (options.roughness !== undefined) this.#roughness = options.roughness;
