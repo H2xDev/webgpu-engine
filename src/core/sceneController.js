@@ -3,6 +3,10 @@ import { Renderer } from './renderer.js';
 import { InputController } from './inputController.js';
 
 export const SceneController = new class SceneController {
+  constructor() {
+    this.beginLoop = this.beginLoop.bind(this);
+  }
+
   /** @type { Scene | null } */
   currentScene = null;
 
@@ -30,7 +34,7 @@ export const SceneController = new class SceneController {
 
   lastTimestamp = 0;
   beginLoop(timestamp = 0) {
-    const dt = (timestamp - this.lastTimestamp) * 0.001;
+    const dt = Math.min(0.1, (timestamp - this.lastTimestamp) * 0.001);
     this.lastTimestamp = timestamp;
 
     if (this.currentScene) {
@@ -40,6 +44,6 @@ export const SceneController = new class SceneController {
     Renderer.render();
     InputController.update();
 
-    requestAnimationFrame(this.beginLoop.bind(this));
+    requestAnimationFrame(this.beginLoop);
   }
 }
