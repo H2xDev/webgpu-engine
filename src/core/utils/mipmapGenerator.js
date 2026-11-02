@@ -104,6 +104,8 @@ export const MipmapGenerator  = new class MipmapGenerator {
 
     this.device.queue.copyExternalImageToTexture({ source }, { texture: outputTexture }, [source.width, source.height])
 
+    if (mipLevelCount <= 1) return outputTexture;
+
     this.generate(outputTexture, mipLevelCount - 1)
 
     return outputTexture;
@@ -112,53 +114,47 @@ export const MipmapGenerator  = new class MipmapGenerator {
   /**
    *
    * @param { GPUTexture } inputTexture
-   * @param { number } maxMipLevel
-   * @param { number } mipLevel
-   * @param { GPUCommandEncoder } commandEncoder
+   * @param { number } maxMipLevel - Index of the last mip level to generate.
    */
-  generate(inputTexture, maxMipLevel, mipLevel = 0, commandEncoder = this.device.createCommandEncoder()) {
-    const inputTextureView = inputTexture.createView({
-      dimension: '2d',
-      baseMipLevel: mipLevel,
-      mipLevelCount: 1,
-    });
+  generate(inputTexture, maxMipLevel) {
+    if (maxMipLevel <= 0) return;
 
-    const outputTextureView = inputTexture.createView({
-      dimension: '2d',
-      baseMipLevel: mipLevel + 1,
-      mipLevelCount: 1,
-    });
-
+    const commandEncoder = this.device.createCommandEncoder();
     const pipeline = this.#getPipeline(inputTexture.format);
 
-    const bindGroup = this.device.createBindGroup({
-      layout: pipeline.getBindGroupLayout(0),
-      entries: [
-        {
-          binding: 0,
-          resource: inputTextureView,
-        },
-        {
-          binding: 1,
-          resource: outputTextureView,
-        },
-      ],
-    });
+    for (let mipLevel = 0; mipLevel < maxMipLevel; mipLevel++) {
+      const bindGroup = this.device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [
+          {
+            binding: 0,
+            resource: inputTexture.createView({
+              dimension: '2d',
+              baseMipLevel: mipLevel,
+              mipLevelCount: 1,
+            }),
+          },
+          {
+            binding: 1,
+            resource: inputTexture.createView({
+              dimension: '2d',
+              baseMipLevel: mipLevel + 1,
+              mipLevelCount: 1,
+            }),
+          },
+        ],
+      });
 
-    const width = Math.max(1, inputTexture.width >> (mipLevel + 1));
-    const height = Math.max(1, inputTexture.height >> (mipLevel + 1));
+      const width = Math.max(1, inputTexture.width >> (mipLevel + 1));
+      const height = Math.max(1, inputTexture.height >> (mipLevel + 1));
 
-    const passEncoder = commandEncoder.beginComputePass();
-    passEncoder.setPipeline(pipeline);
-    passEncoder.setBindGroup(0, bindGroup);
-    passEncoder.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8));
-    passEncoder.end();
-
-    const isLastMipLevel = mipLevel + 1 === maxMipLevel;
-    if (!isLastMipLevel) {
-      this.generate(inputTexture, maxMipLevel, mipLevel + 1, commandEncoder);
-    } else {
-      this.device.queue.submit([commandEncoder.finish()]);
+      const passEncoder = commandEncoder.beginComputePass();
+      passEncoder.setPipeline(pipeline);
+      passEncoder.setBindGroup(0, bindGroup);
+      passEncoder.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8));
+      passEncoder.end();
     }
+
+    this.device.queue.submit([commandEncoder.finish()]);
   }
 }
