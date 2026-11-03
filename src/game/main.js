@@ -118,8 +118,8 @@ export const MainScene = new class MainScene extends Scene {
     this.defineDebugUI();
   }
 
+  /** @param { number } dt */
   update(dt) {
-    super.update(dt);
     this.fps = 1.0 / dt;
 
     const distanceToCamera = vec3.distance(this.player.globalPosition, this.camera.camera.globalPosition);

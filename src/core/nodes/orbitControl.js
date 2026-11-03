@@ -80,7 +80,6 @@ export class OrbitControl extends Entity3D {
     }
 
     this.#apply();
-    super.update(dt);
   }
 
   #apply() {

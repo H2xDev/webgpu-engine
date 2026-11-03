@@ -34,11 +34,20 @@ export class DirectionalLight extends Camera3D {
   }
 
   enterTree() {
-    DirectionalLight.current = this;
+    if (!DirectionalLight.current) {
+      DirectionalLight.current = this;
+    }
   }
 
-  // Keep the orthographic shadow projection; Camera3D would replace it with a perspective one on resize.
-  updateProjection() {}
+  exitTree() {
+    if (DirectionalLight.current === this) {
+      DirectionalLight.current = null;
+    }
+  }
+
+  makeCurrent() {
+    DirectionalLight.current = this;
+  }
 
   update() {
     if (!Camera3D.current) return;

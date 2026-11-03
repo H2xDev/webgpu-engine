@@ -176,7 +176,5 @@ export class Player extends Entity3D {
         break;
       }
     }
-
-    super.update(dt);
   }
 }

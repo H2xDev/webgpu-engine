@@ -59,6 +59,12 @@ export class Environment extends Entity3D {
     Environment.current = this;
   }
 
+  exitTree() {
+    if (Environment.current === this) {
+      Environment.current = null;
+    }
+  }
+
   #initIrradianceMap() {
     this.irradianceMap = IrradianceMapGenerator.generate(this.panoramaTexture.texture.createView());
     this.irradianceMapView = this.irradianceMap.createView();

@@ -144,7 +144,5 @@ export class FollowCamera extends Entity3D {
     const rz = mat4.fromZRotation(mat4.create(), this.handheldNoise(this.time, 7.9) * HANDHELD_ANGLE);
     const tilt = mat4.multiply(mat4.create(), mat4.multiply(mat4.create(), rx, ry), rz);
     mat4.multiply(this.camera.transform, this.camera.transform, tilt);
-
-    super.update(dt);
   }
 }

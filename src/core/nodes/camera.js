@@ -98,6 +98,18 @@ export class Camera3D extends Entity3D {
   }
 
   enterTree() {
+    if (!Camera3D.current) {
+      Camera3D.current = this;
+    }
+  }
+
+  exitTree() {
+    if (Camera3D.current === this) {
+      Camera3D.current = null;
+    }
+  }
+
+  makeCurrent() {
     Camera3D.current = this;
   }
 

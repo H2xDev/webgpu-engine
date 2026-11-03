@@ -25,7 +25,5 @@ export class CameraControl extends Entity3D {
 
     const movement = vec3.add(vec3.create(), forwardMovement, rightMovement);
     this.position = vec3.add(vec3.create(), this.position, movement);
-
-    super.update(dt);
   }
 }
