@@ -1,6 +1,7 @@
 import { AABB } from "./aabb.js";
 import { Material } from "./material.js";
 import { MeshSurface } from "./mesh.js";
+import { Transform } from "./transform.js";
 
 export class RenderInfo {
   /** @type {GPUBuffer} */
@@ -15,15 +16,15 @@ export class RenderInfo {
   /** @type {number} */
   indexCount;
 
-  /** @type {Float32Array} */
+  /** @type { Transform } */
   transform;
 
-  /** @type {MeshSurface[]} */
+  /** @type { MeshSurface[] } */
   surfaces = [];
 
-  /** @type {AABB} */
+  /** @type { AABB } */
   aabb;
 
-  /** @type {Material | null} */
+  /** @type { Material | null } */
   material = null;
 }

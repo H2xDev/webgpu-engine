@@ -7,6 +7,7 @@ import { GlbMesh, Material, PlaneMesh, Texture } from "@core/resources";
 import { Player } from "@game/player.js";
 import { FollowCamera } from "@game/followCamera.js";
 import { MaterialManager } from "./materialManager.js";
+import { TO_RAD } from "@core";
 
 export const MainScene = new class MainScene extends Scene {
   /** @type { Player } */
@@ -31,8 +32,8 @@ export const MainScene = new class MainScene extends Scene {
     const env = this.addChild(await Environment.createFromTexture("./src/game/sky_124_2k.png"));
     const light = this.addChild(new DirectionalLight(50));
     light.color = vec3.scale(vec3.create(), [0.96, 0.83, 0.61], 4.0);
-    light.rotate([0, 1, 0], 80);
-    light.rotate(light.right, -45);
+    light.transform.rotate([0, 1, 0], 80 * TO_RAD);
+    light.transform.rotate(light.transform.right, -45 * TO_RAD);
   }
 
   setupCamera() {
@@ -53,8 +54,16 @@ export const MainScene = new class MainScene extends Scene {
     }
     MaterialManager.createMaterial("ground", groundOptions);
 
-    groundOptions.flags = 0;
-    MaterialManager.createMaterial("ground-notrip", groundOptions);
+    MaterialManager.createMaterial("ground-notrip", {
+      albedo: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_baseColor_1k.png"),
+      normalMap: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_normal_gl_1k.png"),
+      ormMap: await Texture.load("./src/game/materials/ground_tiles_21_1k/ground_tiles_21_roughness_1k.png"),
+      roughness: 0.8,
+      metallic: 0.5,
+      normalScale: 0.5,
+      uvScale: 1/8.0,
+      flags: 0,
+    });
   }
 
   defineDebugUI() {

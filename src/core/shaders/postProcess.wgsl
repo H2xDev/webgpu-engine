@@ -13,6 +13,9 @@ struct PostProcessParameters {
   dofAperture: f32,
   dofMaxRadius: f32,
   dofSamples: i32,
+
+  aoIntensity: f32,
+  aoRadius: f32,
 }
 
 @binding(0) @group(0) var screenTexture: texture_2d<f32>;
@@ -71,15 +74,34 @@ fn depthAA(uv: vec2<f32>) -> vec4<f32> {
   let edgeY = abs(zU + zD - 2.0 * zC);
   let edge = max(edgeX, edgeY) / max(zC, 1e-4);
   let threshold = postProcessParams.aaEdgeThreshold;
-  let strength = smoothstep(threshold, threshold * 4.0, edge);
+  let depthStrength = smoothstep(threshold, threshold * 4.0, edge);
+
+  // Color edges catch aliasing the depth buffer can't see (textures, glow, shadows)
+  let lumaW = vec3<f32>(0.299, 0.587, 0.114);
+  let lC = dot(center.rgb, lumaW);
+  let lL = dot(textureSampleLevel(screenTexture, screenSampler, uv + vec2<f32>(-1.0, 0.0) * texel, 0.0).rgb, lumaW);
+  let lR = dot(textureSampleLevel(screenTexture, screenSampler, uv + vec2<f32>(1.0, 0.0) * texel, 0.0).rgb, lumaW);
+  let lU = dot(textureSampleLevel(screenTexture, screenSampler, uv + vec2<f32>(0.0, -1.0) * texel, 0.0).rgb, lumaW);
+  let lD = dot(textureSampleLevel(screenTexture, screenSampler, uv + vec2<f32>(0.0, 1.0) * texel, 0.0).rgb, lumaW);
+  let lumaGrad = vec2<f32>(lR - lL, lD - lU);
+  let lumaRange = max(max(lL, lR), max(max(lU, lD), lC)) - min(min(lL, lR), min(min(lU, lD), lC));
+  let lumaStrength = smoothstep(0.05, 0.25, lumaRange / max(max(lL, lR), max(max(lU, lD), max(lC, 0.05))));
+
+  let strength = max(depthStrength, lumaStrength);
   if (strength <= 0.0) {
     return center;
   }
 
-  // Depth gradient points across the edge; pick the nearer-side neighbors for stability
+  // Gradient points across the edge; prefer depth, fall back to luma
   var grad = vec2<f32>(zR - zL, zD - zU);
+  if (depthStrength <= 0.0 || dot(grad, grad) < 1e-12) {
+    grad = lumaGrad;
+  }
   if (dot(grad, grad) < 1e-12) {
     grad = vec2<f32>(edgeX, edgeY);
+  }
+  if (dot(grad, grad) < 1e-12) {
+    return center;
   }
   let dir = normalize(grad) * texel * postProcessParams.aaSpan;
 
@@ -90,6 +112,46 @@ fn depthAA(uv: vec2<f32>) -> vec4<f32> {
 
   let blurred = (a + b + c + d + center.rgb) * 0.2;
   return vec4<f32>(mix(center.rgb, blurred, strength), center.a);
+}
+
+const AO_PAIRS: i32 = 8;
+
+// Depth-only SSAO. Samples come in opposite pairs: a flat or slanted surface has
+// zA + zB == 2 * zC and yields no occlusion, only concave corners do.
+fn ambientOcclusion(uv: vec2<f32>, fragCoord: vec2<f32>) -> f32 {
+  let intensity = postProcessParams.aoIntensity;
+  if (intensity <= 0.0) {
+    return 1.0;
+  }
+
+  let dims = vec2<i32>(textureDimensions(depthTexture));
+  let maxP = dims - vec2<i32>(1);
+  let p = clamp(vec2<i32>(uv * vec2<f32>(dims)), vec2<i32>(0), maxP);
+  let zC = depthAt(p, maxP);
+  let worldRadius = postProcessParams.aoRadius;
+
+  // Approximates a ~90 degree vertical FOV to convert world radius into pixels
+  let radiusPx = clamp(worldRadius / zC * f32(dims.y) * 0.5, 2.0, 64.0);
+  let noise = fract(52.9829189 * fract(dot(fragCoord, vec2<f32>(0.06711056, 0.00583715))));
+
+  var occlusion = 0.0;
+  for (var i = 0; i < AO_PAIRS; i++) {
+    let fi = f32(i);
+    let angle = (fi + noise) * GOLDEN_ANGLE;
+    let r = sqrt((fi + 0.5) / f32(AO_PAIRS)) * radiusPx;
+    let offset = vec2<i32>(round(vec2<f32>(cos(angle), sin(angle)) * max(r, 1.0)));
+    let zA = depthAt(p + offset, maxP);
+    let zB = depthAt(p - offset, maxP);
+
+    let rangeA = 1.0 - smoothstep(worldRadius, worldRadius * 2.0, abs(zC - zA));
+    let rangeB = 1.0 - smoothstep(worldRadius, worldRadius * 2.0, abs(zC - zB));
+    let concavity = (2.0 * zC - zA - zB) * 0.5;
+    let bias = 0.002 * zC;
+    occlusion += clamp((concavity - bias) / worldRadius, 0.0, 1.0) * min(rangeA, rangeB);
+  }
+
+  occlusion /= f32(AO_PAIRS);
+  return clamp(1.0 - occlusion * intensity, 0.0, 1.0);
 }
 
 fn circleOfConfusion(uv: vec2<f32>) -> f32 {
@@ -135,9 +197,17 @@ fn vignette(uv: vec2<f32>, dims: vec2<f32>) -> f32 {
 }
 
 @fragment
-fn fragment_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-  var screenSample: vec4<f32> = depthAA(uv);
-  screenSample = vec4<f32>(depthOfField(uv, screenSample.rgb, screenTexture), screenSample.a);
+fn fragment_main(@builtin(position) fragCoord: vec4<f32>, @location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+  // DOF resamples the raw texture and would wash out an AA'd center (weight ~1/N),
+  // so apply the AA correction on top of the DOF result, fading out as blur grows.
+  let rawSample = textureSampleLevel(screenTexture, screenSampler, uv, 0.0);
+  let aaSample = depthAA(uv);
+  let focus = 1.0 - circleOfConfusion(uv);
+  var screenSample = vec4<f32>(
+    depthOfField(uv, rawSample.rgb, screenTexture) + (aaSample.rgb - rawSample.rgb) * focus,
+    rawSample.a
+  );
+  screenSample = vec4<f32>(screenSample.rgb * ambientOcclusion(uv, fragCoord.xy), screenSample.a);
 
   var glowSample: vec4<f32> = textureSample(glowTexture, glowSampler, uv);
   glowSample = vec4<f32>(depthOfField(uv, glowSample.rgb, glowTexture), glowSample.a);

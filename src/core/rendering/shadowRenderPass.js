@@ -1,4 +1,4 @@
-import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT } from "../convention.js";
+import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT, OBJECT_SIZE } from "../convention.js";
 import { DirectionalLight } from "../nodes/directionalLight.js";
 import { ShaderManager } from "../shaderManager.js";
 import { Layouts } from "./layouts.js";
@@ -85,7 +85,7 @@ export class ShadowRenderPass extends RenderPass {
           resource: {
             buffer: objectBuffer,
             offset: 0,
-            size: 64,
+            size: OBJECT_SIZE,
           }
         },
       ],

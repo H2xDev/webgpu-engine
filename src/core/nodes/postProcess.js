@@ -15,6 +15,8 @@ import { PostProcessPass } from "../rendering/postProcessPass.js";
   * @property { number } [dofAperture]
   * @property { number } [dofMaxRadius]
   * @property { number } [dofSamples]
+  * @property { number } [aoIntensity]
+  * @property { number } [aoRadius]
   */
 
 export class PostProcess extends Entity3D {
@@ -54,7 +56,28 @@ export class PostProcess extends Entity3D {
   #dofMaxRadius = 10.0;
   #dofSamples = 32;
 
+  #aoIntensity = 1.0;
+  #aoRadius = 0.5;
+
   uniformBuffer = null;
+
+  get aoIntensity() {
+    return this.#aoIntensity;
+  }
+
+  set aoIntensity(value) {
+    this.#aoIntensity = value;
+    Renderer.device.queue.writeBuffer(this.uniformBuffer, 44, new Float32Array([this.#aoIntensity]));
+  }
+
+  get aoRadius() {
+    return this.#aoRadius;
+  }
+
+  set aoRadius(value) {
+    this.#aoRadius = value;
+    Renderer.device.queue.writeBuffer(this.uniformBuffer, 48, new Float32Array([this.#aoRadius]));
+  }
 
   get aaEdgeThreshold() {
     return this.#aaEdgeThreshold;
@@ -177,6 +200,7 @@ export class PostProcess extends Entity3D {
       this.#dofMaxRadius,
     ]);
     new Uint32Array(data, 40, 1)[0] = this.#dofSamples;
+    new Float32Array(data, 44, 2).set([this.#aoIntensity, this.#aoRadius]);
     Renderer.device.queue.writeBuffer(this.uniformBuffer, 0, data);
 
     this.#assignOptions(options);
@@ -218,7 +242,9 @@ export class PostProcess extends Entity3D {
       "dofFocusDistance",
       "dofAperture",
       "dofMaxRadius",
-      "dofSamples"
+      "dofSamples",
+      "aoIntensity",
+      "aoRadius",
     ];
 
     const keys = Object.keys(options);

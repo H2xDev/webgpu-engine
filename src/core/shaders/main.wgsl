@@ -21,7 +21,8 @@ struct RenderData {
 };
 
 struct ObjectData {
-  model: mat4x4<f32>
+  model: mat4x4<f32>,
+  normalModel: mat3x3<f32>
 }
 
 struct MaterialProperties {
@@ -83,7 +84,7 @@ fn vertex_main(
 
 	output.uv = uv;
   output.worldPos = (object.model * vec4<f32>(vpos, 1.0)).xyz;
-  output.normal = normalize((object.model * vec4<f32>(normal, 0.0)).xyz);
+  output.normal = normalize(object.normalModel * normal);
 
   output.depthCoord = renderData.directionalLight.projection *
     renderData.directionalLight.view *

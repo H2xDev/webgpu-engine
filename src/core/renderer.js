@@ -10,6 +10,7 @@ import { EnvironmentRenderPass } from "./rendering/environmentRenderPass.js";
 import { KawaseBlur } from "./rendering/kawaseBlur.js";
 import { IrradianceMapGenerator } from "./utils/irradianceMapGenerator.js";
 import { MipmapGenerator } from "./utils/mipmapGenerator.js";
+import { OBJECT_SIZE, OBJECT_STRIDE } from "./convention.js";
 
 export const Renderer = new class Renderer {
   /** @type { GPUDevice } */
@@ -37,8 +38,8 @@ export const Renderer = new class Renderer {
   /** @type { Material } */
   defaultMaterial;
 
-  objectSize = 64;
-  objectStride = 256;
+  /** Scratch for a std140-style padded mat3x3 (3 columns of vec4). */
+  normalScratch = new Float32Array(12);
 
   /** @type { MainRenderPass } */
   mainRenderPass;
@@ -98,7 +99,7 @@ export const Renderer = new class Renderer {
 
   async #defineAssets() {
     this.objectBuffer = this.device.createBuffer({
-      size: 256 * 1024,
+      size: OBJECT_STRIDE * 1024,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
 
@@ -118,7 +119,6 @@ export const Renderer = new class Renderer {
     this.adapter = await navigator.gpu.requestAdapter();
     this.device = await this.adapter.requestDevice();
 
-    this.objectStride = Math.ceil(this.objectSize / this.device.limits.minStorageBufferOffsetAlignment) * this.device.limits.minStorageBufferOffsetAlignment;
     Renderer.device = this.device;
   }
 
@@ -155,8 +155,17 @@ export const Renderer = new class Renderer {
     */
   #processRenderQueue(rp, bindGroup) {
     this.renderQueue.forEach((info, index) => {
-      const offset = this.objectStride * index;
-      this.device.queue.writeBuffer(this.objectBuffer, offset, info.transform);
+      const offset = OBJECT_STRIDE * index;
+      // model: mat4x4
+      // normalMatrix: mat3x3
+      this.device.queue.writeBuffer(this.objectBuffer, offset, info.transform.data);
+      const n = info.transform.getNormalMatrix()
+      const padded = this.normalScratch;
+      padded[0] = n[0]; padded[1] = n[1]; padded[2] = n[2];
+      padded[4] = n[3]; padded[5] = n[4]; padded[6] = n[5];
+      padded[8] = n[6]; padded[9] = n[7]; padded[10] = n[8];
+      this.device.queue.writeBuffer(this.objectBuffer, offset + 64, padded);
+
       rp.setVertexBuffer(0, info.vertices);
       rp.setIndexBuffer(info.indices, "uint32");
       rp.setBindGroup(0, bindGroup, [ offset ]);

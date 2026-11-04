@@ -8,3 +8,4 @@ export * from "./renderInfo.js";
 export * from "./material.js";
 export * from "./mesh.js";
 export * from "./tween.js";
+export * from './transform.js';

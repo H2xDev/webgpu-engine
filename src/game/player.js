@@ -3,24 +3,12 @@ import { BoxMesh } from '../core/resources/boxMesh.js';
 import { InputController } from '../core/inputController.js';
 import { MaterialManager } from './materialManager.js';
 
-import { vec3, mat4 } from '../core/gl-matrix/index.js';
-
 const ROLL_DURATION = 0.3;
-const UP = [0, 1, 0];
 
 // Camera-relative screen direction snapped to a grid axis, as [x, z].
 function snapToAxis(v) {
   if (Math.abs(v[0]) >= Math.abs(v[2])) return [Math.sign(v[0]), 0];
   return [0, Math.sign(v[2])];
-}
-
-/**
- * Easing function for a bounce effect.
- * @param { number } x  Input in [0, 1].
- * @returns { number }  Output in [0, 1].
- */
-function easeInCirc(x) {
-return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
 
 export class Player extends Entity3D {
@@ -34,7 +22,7 @@ export class Player extends Entity3D {
   /** @type { { cells: number[], width: number, depth: number } | null } */
   level = null;
 
-  /** @type { { target: [number, number], pivot: vec3, offset: vec3, axis: vec3, elapsed: number, startRotation: mat4 } | null } */
+  /** @type { { target: [number, number], pivot: number[], axis: number[], elapsed: number, startTransform: Transform } | null } */
   roll = null;
 
   ready = false;
@@ -51,10 +39,10 @@ export class Player extends Entity3D {
     ));
 
     // The mesh is centered on the entity; the entity sits at the cube's center while rolling.
-    this.meshInstance.position = [0, 10, 0];
+    this.meshInstance.transform.origin = [0, 10, 0];
 
     Tween
-      .property(this.meshInstance, "position", [0.0, 0.0, 0.0], 3000, "easeOutCirc")
+      .property(this.meshInstance.transform, "origin", [0.0, 0.0, 0.0], 3000, "easeOutCirc")
       .then(() => this.ready = true);
 
 
@@ -79,7 +67,7 @@ export class Player extends Entity3D {
     this.baseY = y;
     this.cell = [x, z];
     this.roll = null;
-    this.position = [x + 0.5, y + 0.5, z + 0.5];
+    this.transform.origin = [x + 0.5, y + 0.5, z + 0.5];
   }
 
   /**
@@ -99,7 +87,7 @@ export class Player extends Entity3D {
    */
   getKeyDirections() {
     const camera = Camera3D.current;
-    const f = camera ? vec3.clone(camera.globalForward) : [0, 0, -1];
+    const f = camera ? [...camera.globalTransform.forward] : [0, 0, -1];
     f[1] = 0;
 
     const forward = snapToAxis(f);
@@ -119,16 +107,13 @@ export class Player extends Entity3D {
    */
   startRoll([dx, dz]) {
     const [cx, cz] = this.cell;
-    const center = [cx + 0.5, this.baseY + 0.5, cz + 0.5];
-    const pivot = vec3.fromValues(cx + 0.5 + dx * 0.5, this.baseY, cz + 0.5 + dz * 0.5);
 
     this.roll = {
       target: [cx + dx, cz + dz],
-      pivot,
-      offset: vec3.subtract(vec3.create(), center, pivot),
-      axis: vec3.normalize(vec3.create(), [dz, 0, -dx]),
+      pivot: [cx + 0.5 + dx * 0.5, this.baseY, cz + 0.5 + dz * 0.5],
+      axis: [dz, 0, -dx],
       elapsed: 0,
-      startRotation: mat4.clone(this.meshInstance.transform),
+      startTransform: this.transform.duplicate(),
     };
 
     this.applyRoll(0);
@@ -138,11 +123,8 @@ export class Player extends Entity3D {
    * @param { number } t  Roll progress in [0, 1].
    */
   applyRoll(t) {
-    const rotation = mat4.fromRotation(mat4.create(), t * Math.PI / 2, this.roll.axis);
-    const offset = vec3.transformMat4(vec3.create(), this.roll.offset, rotation);
-
-    mat4.multiply(this.meshInstance.transform, rotation, this.roll.startRotation);
-    this.position = vec3.add(vec3.create(), this.roll.pivot, offset);
+    const { startTransform, pivot, axis } = this.roll;
+    this.transform.copy(startTransform).rotateAround(pivot, axis, t * Math.PI / 2);
   }
 
   /**
@@ -153,7 +135,7 @@ export class Player extends Entity3D {
 
     if (this.roll) {
       this.roll.elapsed += dt;
-      const t = easeInCirc(this.roll.elapsed / ROLL_DURATION);
+      const t = this.roll.elapsed / ROLL_DURATION;
 
       if (t < 1) {
         this.applyRoll(t);

@@ -1,4 +1,4 @@
-import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT, REVERSED_Z } from "../convention.js";
+import { DEPTH_CLEAR, DEPTH_COMPARE, DEPTH_FORMAT, REVERSED_Z, OBJECT_SIZE } from "../convention.js";
 
 import { Renderer } from "../renderer.js";
 import { Camera3D } from "../nodes/camera.js";
@@ -113,7 +113,7 @@ export class MainRenderPass extends RenderPass {
           resource: {
             buffer: objectBuffer,
             offset: 0,
-            size: 64,
+            size: OBJECT_SIZE,
           }
         },
       ],

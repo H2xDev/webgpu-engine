@@ -1,5 +1,4 @@
-import { vec3 } from 'gl-matrix';
-import { Entity3D, InputController } from '@core';
+import { Entity3D, InputController, TO_RAD } from '@core';
 
 export class CameraControl extends Entity3D {
   /** @type { number } */
@@ -11,19 +10,18 @@ export class CameraControl extends Entity3D {
   }
   /** @param { number } dt */
   update(dt) {
+    const transform = this.transform;
+
     if (InputController.is_lmb_pressed) {
-      this.rotate([0, 1, 0], -InputController.mouseMovement[0] * 0.4);
-      this.rotate(this.right, -InputController.mouseMovement[1] * 0.4);
+      transform.rotate([0, 1, 0], -InputController.mouseMovement[0] * 0.4 * TO_RAD);
+      transform.rotate(transform.right, -InputController.mouseMovement[1] * 0.4 * TO_RAD);
     }
 
     const forwardSpeed = InputController.is_key_pressed("KeyW") ? 1 : InputController.is_key_pressed("KeyS") ? -1 : 0;
     const rightSpeed = InputController.is_key_pressed("KeyD") ? 1 : InputController.is_key_pressed("KeyA") ? -1 : 0;
 
     const speed = this.speed * dt;
-    const forwardMovement = vec3.scale(vec3.create(), this.forward, forwardSpeed * speed);
-    const rightMovement = vec3.scale(vec3.create(), this.right, rightSpeed * speed);
-
-    const movement = vec3.add(vec3.create(), forwardMovement, rightMovement);
-    this.position = vec3.add(vec3.create(), this.position, movement);
+    const { forward, right, origin } = transform;
+    transform.origin = origin.map((v, i) => v + (forward[i] * forwardSpeed + right[i] * rightSpeed) * speed);
   }
 }

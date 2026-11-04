@@ -94,17 +94,15 @@ export class Camera3D extends Entity3D {
 
   constructor() {
     super()
+    this.updateProjection = this.updateProjection.bind(this);
     this.updateProjection();
-
-    window.addEventListener("resize", () => {
-      this.aspect = window.innerWidth / window.innerHeight;
-      this.updateProjection();
-    });
   }
 
   updateProjection() {
     const near = REVERSED_Z ? this.far : this.near;
     const far  = REVERSED_Z ? this.near : this.far;
+
+    this.aspect = window.innerWidth / window.innerHeight;
 
     if (this.type === "perspective") {
       mat4.perspectiveZO(this.projection, TO_RAD * this.fov, this.aspect, near, far);
@@ -122,6 +120,8 @@ export class Camera3D extends Entity3D {
     if (!Camera3D.current_) {
       Camera3D.current_ = this;
     }
+
+    window.addEventListener("resize", this.updateProjection);
   }
 
   exitTree() {
@@ -130,6 +130,8 @@ export class Camera3D extends Entity3D {
     if (Camera3D.current_ === this) {
       Camera3D.current_ = Camera3D.activeCameras.values().next().value ?? null;
     }
+
+    window.removeEventListener("resize", this.updateProjection);
   }
 
   makeCurrent() {
@@ -142,9 +144,9 @@ export class Camera3D extends Entity3D {
     * @param { number } offset
     */
   writeToBuffer(device, buffer, offset = 0) {
-    const viewMatrix = mat4.invert(mat4.create(), this.globalTransform);
+    const viewMatrix = this.globalTransform.inverse().data;
     device.queue.writeBuffer(buffer, offset + 0, viewMatrix);
-    device.queue.writeBuffer(buffer, offset + 64, this.globalTransform);
+    device.queue.writeBuffer(buffer, offset + 64, this.globalTransform.data);
     device.queue.writeBuffer(buffer, offset + 128, this.projection);
   }
 }

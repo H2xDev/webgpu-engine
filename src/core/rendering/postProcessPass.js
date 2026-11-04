@@ -93,6 +93,10 @@ export class PostProcessPass extends RenderPass {
 
     this.device.queue.writeBuffer(this.fallbackPostProcessUniformBuffer, 0, data);
     this.device.queue.writeBuffer(this.fallbackPostProcessUniformBuffer, 40, new Uint32Array([8]));
+    this.device.queue.writeBuffer(this.fallbackPostProcessUniformBuffer, 44, new Float32Array([
+      1.0, // aoIntensity
+      0.5, // aoRadius
+    ]));
   }
 
   #initBindGroup() {

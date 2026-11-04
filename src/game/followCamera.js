@@ -1,6 +1,4 @@
-import { vec3, mat4 } from "gl-matrix";
-
-import { Entity3D, Camera3D, InputController } from "@core";
+import { Entity3D, Camera3D, InputController, Transform } from "@core";
 
 // Higher values make the camera follow the target more tightly.
 const FOLLOW_SPEED = 6;
@@ -26,10 +24,10 @@ export class FollowCamera extends Entity3D {
   /** @type { Entity3D } */
   target
 
-  /** @type { vec3 } Camera offset from the pivot, derived from the smoothed orbit values. */
+  /** @type { [number, number, number] } Camera offset from the pivot, derived from the smoothed orbit values. */
   cameraOffset
 
-  /** @type { vec3 } Smoothed pivot position. */
+  /** @type { [number, number, number] } Smoothed pivot position. */
   followPosition
 
   /** Orbit goals, in degrees and world units. */
@@ -40,7 +38,7 @@ export class FollowCamera extends Entity3D {
   controlsEnabled = true;
 
   /** Pivot offset from the target, moved by Shift+LMB drag. */
-  panOffset = vec3.create();
+  panOffset = [0, 0, 0];
 
   #yaw = -130;
   #pitch = 45;
@@ -64,21 +62,21 @@ export class FollowCamera extends Entity3D {
     this.distance = this.#distance = camera.orthoDistance;
     this.#applyOrbit();
 
-    this.position = vec3.clone(target.position);
-    this.followPosition = vec3.clone(this.position);
+    this.transform.origin = target.globalPosition;
+    this.followPosition = [...this.transform.origin];
   }
 
   /** Sets the camera's local transform to look at the pivot from the smoothed orbit offset. */
   #applyOrbit() {
     const yaw = this.#yaw * DEG;
     const pitch = this.#pitch * DEG;
-    this.cameraOffset = vec3.fromValues(
-      Math.sin(yaw) * Math.cos(pitch),
-      Math.sin(pitch),
-      Math.cos(yaw) * Math.cos(pitch),
-    );
-    vec3.scale(this.cameraOffset, this.cameraOffset, this.#distance);
-    mat4.targetTo(this.camera.transform, this.cameraOffset, vec3.create(), [0, 1, 0]);
+    this.cameraOffset = [
+      Math.sin(yaw) * Math.cos(pitch) * this.#distance,
+      Math.sin(pitch) * this.#distance,
+      Math.cos(yaw) * Math.cos(pitch) * this.#distance,
+    ];
+    this.camera.position = this.cameraOffset;
+    this.camera.transform.lookAt(Transform.ZERO, Transform.UP);
   }
 
   /** @param { number } dt */
@@ -88,8 +86,10 @@ export class FollowCamera extends Entity3D {
 
     if (InputController.is_lmb_pressed && shift) {
       const scale = this.#distance * ORBIT_PAN_SPEED;
-      vec3.scaleAndAdd(this.panOffset, this.panOffset, this.camera.globalRight, -dx * scale);
-      vec3.scaleAndAdd(this.panOffset, this.panOffset, this.camera.globalUp, dy * scale);
+      const { right, up } = this.camera.globalTransform;
+      for (let i = 0; i < 3; i++) {
+        this.panOffset[i] += right[i] * -dx * scale + up[i] * dy * scale;
+      }
     } else if (InputController.is_lmb_pressed) {
       this.yaw -= dx * ORBIT_ROTATE_SPEED;
       this.pitch = Math.min(ORBIT_MAX_PITCH, Math.max(ORBIT_MIN_PITCH, this.pitch + dy * ORBIT_ROTATE_SPEED));
@@ -127,22 +127,23 @@ export class FollowCamera extends Entity3D {
     if (this.controlsEnabled) this.#handleOrbitInput(dt);
     this.#applyOrbit();
 
-    const pivot = vec3.add(vec3.create(), this.target.position, this.panOffset);
+    const targetPosition = this.target.globalPosition;
     const followT = 1 - Math.exp(-FOLLOW_SPEED * dt);
-    this.followPosition = vec3.lerp(vec3.create(), this.followPosition, pivot, followT);
+    for (let i = 0; i < 3; i++) {
+      const pivot = targetPosition[i] + this.panOffset[i];
+      this.followPosition[i] += (pivot - this.followPosition[i]) * followT;
+    }
 
     this.time += dt * HANDHELD_SPEED;
-    const right = this.camera.right;
-    const up = this.camera.up;
+    const { right, up } = this.camera.transform;
     const shakeRight = this.handheldNoise(this.time, 0) * HANDHELD_AMPLITUDE;
     const shakeUp = this.handheldNoise(this.time, 1.7) * HANDHELD_AMPLITUDE;
-    const shake = vec3.scaleAndAdd(vec3.create(), vec3.scale(vec3.create(), right, shakeRight), up, shakeUp);
-    this.position = vec3.add(vec3.create(), this.followPosition, shake);
+    this.transform.origin = this.followPosition.map((v, i) => v + right[i] * shakeRight + up[i] * shakeUp);
 
-    const rx = mat4.fromXRotation(mat4.create(), this.handheldNoise(this.time, 3.1) * HANDHELD_ANGLE);
-    const ry = mat4.fromYRotation(mat4.create(), this.handheldNoise(this.time, 5.3) * HANDHELD_ANGLE);
-    const rz = mat4.fromZRotation(mat4.create(), this.handheldNoise(this.time, 7.9) * HANDHELD_ANGLE);
-    const tilt = mat4.multiply(mat4.create(), mat4.multiply(mat4.create(), rx, ry), rz);
-    mat4.multiply(this.camera.transform, this.camera.transform, tilt);
+    this.camera.transform.rotateLocal(
+      this.handheldNoise(this.time, 3.1) * HANDHELD_ANGLE,
+      this.handheldNoise(this.time, 5.3) * HANDHELD_ANGLE,
+      this.handheldNoise(this.time, 7.9) * HANDHELD_ANGLE,
+    );
   }
 }
