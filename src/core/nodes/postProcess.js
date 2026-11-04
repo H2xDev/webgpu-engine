@@ -2,19 +2,42 @@ import { Renderer } from "../renderer.js";
 import { Entity3D } from "./entity3d.js";
 import { PostProcessPass } from "../rendering/postProcessPass.js";
 
+/**
+  * @typedef {Object} PostProcessOptions
+  * @property { number } [aaEdgeThreshold]
+  * @property { number } [aaSpan]
+  * @property { number } [cameraNear]
+  * @property { number } [cameraFar]
+  * @property { number } [vingetteIntensity]
+  * @property { number } [vingetteRadius]
+  * @property { number } [vingetteSoftness]
+  * @property { number } [dofFocusDistance]
+  * @property { number } [dofAperture]
+  * @property { number } [dofMaxRadius]
+  * @property { number } [dofSamples]
+  */
+
 export class PostProcess extends Entity3D {
   /** @type { PostProcess } */
   static current_;
+
+  /** @type { Set<PostProcess> } */
+  static activePostProcesses = new Set();
 
   static get current() {
     return PostProcess.current_;
   }
 
-  /** @param { PostProcess } value */
   static set current(value) {
-    PostProcess.current_ = value;
-    PostProcessPass.instance.currentUniformBuffer = value?.uniformBuffer ?? null;
+    if (value) {
+      PostProcess.current_ = value;
+      PostProcessPass.instance.currentUniformBuffer = value?.uniformBuffer ?? null;
+    } else {
+      PostProcess.current_ = PostProcess.activePostProcesses.values().next().value ?? null;
+      PostProcessPass.instance.currentUniformBuffer = PostProcess.current_?.uniformBuffer ?? null;
+    }
   }
+
 
   #aaEdgeThreshold = 0.02;
   #aaSpan = 1.5;
@@ -160,21 +183,29 @@ export class PostProcess extends Entity3D {
   }
 
   enterTree() {
+    PostProcess.activePostProcesses.add(this);
     if (PostProcess.current) return;
     PostProcess.current = this;
   }
 
   exitTree() {
+    PostProcess.activePostProcesses.delete(this);
     if (PostProcess.current === this) {
       PostProcess.current = null;
     }
   }
 
+  /**
+   * @param { PostProcessOptions } options
+   */
   #assignOptions(options) {
     this.#verifyOptions(options);
     Object.assign(this, options);
   }
 
+  /**
+   * @param { PostProcessOptions } options
+   */
   #verifyOptions(options) {
     const validKeys = [
       "aaEdgeThreshold",
@@ -190,7 +221,9 @@ export class PostProcess extends Entity3D {
       "dofSamples"
     ];
 
-    for (const key of Object.keys(options)) {
+    const keys = Object.keys(options);
+
+    for (const key of keys) {
       if (!validKeys.includes(key)) {
         throw new Error(`Invalid option key: ${key}`);
       }

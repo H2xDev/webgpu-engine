@@ -1,4 +1,4 @@
-import { mat4, vec3 } from "gl-matrix";
+import { mat4 } from "gl-matrix";
 
 import { TO_RAD } from "../utils.js";
 import { Entity3D } from "./entity3d.js";
@@ -6,7 +6,26 @@ import { REVERSED_Z } from "../convention.js";
 
 export class Camera3D extends Entity3D {
   /** @type { Camera3D } */
-  static current;
+  static current_;
+  static get current() {
+    return Camera3D.current_;
+  }
+
+  static set current(value) {
+    if (Camera3D.current_ === value) return;
+
+    if (value) {
+      Camera3D.current_ = value;
+      return;
+    }
+
+    Camera3D.current_ = Camera3D.activeCameras.values().next().value ?? null;
+  }
+
+  /**
+    * @type { Set<Camera3D> }
+    */
+  static activeCameras = new Set();
 
   /** @type { ReturnType<mat4.create> } */
   projection = mat4.create();
@@ -98,14 +117,18 @@ export class Camera3D extends Entity3D {
   }
 
   enterTree() {
-    if (!Camera3D.current) {
-      Camera3D.current = this;
+    Camera3D.activeCameras.add(this);
+
+    if (!Camera3D.current_) {
+      Camera3D.current_ = this;
     }
   }
 
   exitTree() {
-    if (Camera3D.current === this) {
-      Camera3D.current = null;
+    Camera3D.activeCameras.delete(this);
+
+    if (Camera3D.current_ === this) {
+      Camera3D.current_ = Camera3D.activeCameras.values().next().value ?? null;
     }
   }
 

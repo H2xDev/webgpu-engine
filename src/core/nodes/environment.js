@@ -6,7 +6,25 @@ import { Entity3D } from "./entity3d.js";
 
 export class Environment extends Entity3D {
   /** @type { Environment | null } */
-  static current;
+  static current_;
+
+  /** @type { Set<Environment> } */
+  static activeEnvironments = new Set();
+
+  static get current() {
+    return Environment.current_;
+  }
+
+  static set current(value) {
+    if (Environment.current_ === value) return;
+
+    if (value) {
+      Environment.current_ = value;
+      return;
+    }
+
+    Environment.current_ = Environment.activeEnvironments.values().next().value ?? null;
+  }
 
   /** @type { Texture } */
   panoramaTexture;
@@ -56,10 +74,15 @@ export class Environment extends Entity3D {
   }
 
   enterTree() {
-    Environment.current = this;
+    if (!Environment.current) {
+      Environment.current = this;
+    }
+    Environment.activeEnvironments.add(this);
   }
 
   exitTree() {
+    Environment.activeEnvironments.delete(this);
+
     if (Environment.current === this) {
       Environment.current = null;
     }

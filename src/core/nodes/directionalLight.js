@@ -22,7 +22,23 @@ export class DirectionalLight extends Camera3D {
   }
 
   /** @type { DirectionalLight } */
-  static current = null;
+  static current_ = null;
+  static activeLights = new Set();
+
+  static get current() {
+    return DirectionalLight.current_;
+  }
+
+  static set current(value) {
+    if (DirectionalLight.current_ === value) return;
+
+    if (value) {
+      DirectionalLight.current_ = value;
+      return;
+    }
+
+    DirectionalLight.current_ = DirectionalLight.activeLights.values().next().value ?? null;
+  }
 
   /**
     * @param { number } size
@@ -37,9 +53,12 @@ export class DirectionalLight extends Camera3D {
     if (!DirectionalLight.current) {
       DirectionalLight.current = this;
     }
+    DirectionalLight.activeLights.add(this);
   }
 
   exitTree() {
+    DirectionalLight.activeLights.delete(this);
+
     if (DirectionalLight.current === this) {
       DirectionalLight.current = null;
     }
