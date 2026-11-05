@@ -102,15 +102,23 @@ export class Camera3D extends Entity3D {
     const near = REVERSED_Z ? this.far : this.near;
     const far  = REVERSED_Z ? this.near : this.far;
 
+    const actualNear = REVERSED_Z
+      ? Math.max(near, far)
+      : Math.min(near, far)
+
+    const actualFar = REVERSED_Z
+      ? Math.min(near, far)
+      : Math.max(near, far);
+
     this.aspect = window.innerWidth / window.innerHeight;
 
     if (this.type === "perspective") {
-      mat4.perspectiveZO(this.projection, TO_RAD * this.fov, this.aspect, near, far);
+      mat4.perspectiveZO(this.projection, TO_RAD * this.fov, this.aspect, actualNear, actualFar);
     } else if (this.type === "orthographic") {
       const halfHeight = this.orthoDistance * Math.tan(TO_RAD * this.fov / 2);
       const halfWidth = halfHeight * this.aspect;
 
-      mat4.orthoZO(this.projection, -halfWidth, halfWidth, -halfHeight, halfHeight, near, far);
+      mat4.orthoZO(this.projection, -halfWidth, halfWidth, -halfHeight, halfHeight, actualNear, actualFar);
     }
   }
 

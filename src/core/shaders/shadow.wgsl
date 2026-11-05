@@ -12,25 +12,22 @@ fn shadowPCF(
   var shadow: f32 = 0.0;
   let texel_size: vec2<f32> = 1.0 / vec2<f32>(textureDimensions(shadowMap, 0));
 
-  let radius: i32 = 3;
-  var count: f32 = 0.0;
-
   let epsilon: f32 = select(-BIAS, BIAS, REVERSED_Z);
 
-  for (var x: i32 = -radius; x <= radius; x++) {
-    for (var y: i32 = -radius; y <= radius; y++) {
-      let offset: vec2<f32> = vec2<f32>(f32(x), f32(y)) * texel_size;
+  // 4 taps at half-texel offsets; bilinear comparison filtering makes each one a 2x2 PCF.
+  for (var x: i32 = 0; x < 2; x++) {
+    for (var y: i32 = 0; y < 2; y++) {
+      let offset: vec2<f32> = (vec2<f32>(f32(x), f32(y)) - 0.5) * texel_size;
       shadow += textureSampleCompare(
         shadowMap,
         shadowMapSampler,
         uv + offset,
         depth + dot(offset, depthGradient) + epsilon
       );
-      count += 1.0;
     }
   }
 
-  return shadow / count;
+  return shadow * 0.25;
 }
 
 fn getShadowValue(

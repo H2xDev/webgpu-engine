@@ -135,7 +135,7 @@ export class ShadowRenderPass extends RenderPass {
 
   #initDepthTexture() {
     this.depthTexture = this.device.createTexture({
-      size: [4096, 4096, 1],
+      size: [2048, 2048, 1],
       format: DEPTH_FORMAT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
@@ -144,6 +144,9 @@ export class ShadowRenderPass extends RenderPass {
     this.renderPassDescriptor.depthStencilAttachment.view = this.depthTextureView;
     this.depthTextureSampler = this.device.createSampler({
       compare: DEPTH_COMPARE,
+      magFilter: "linear",
+      minFilter: "linear",
+      mipmapFilter: "linear",
     });
   }
 

@@ -213,7 +213,7 @@ fn fragment_main(@builtin(position) fragCoord: vec4<f32>, @location(0) uv: vec2<
   glowSample = vec4<f32>(depthOfField(uv, glowSample.rgb, glowTexture), glowSample.a);
   // glowSample /= f32(postProcessParams.dofSamples);
 
-  let color = screenSample + glowSample;
+  let color = screenSample + max(vec4<f32>(0.0), glowSample);
   let dims = vec2<f32>(textureDimensions(screenTexture));
   return vec4<f32>(color.rgb * vignette(uv, dims), color.a);
 }
