@@ -31,9 +31,9 @@ export class FollowCamera extends Entity3D {
   followPosition
 
   /** Orbit goals, in degrees and world units. */
-  yaw = -130;
-  pitch = 45;
-  distance = 15;
+  yaw = -120;
+  pitch = 20;
+  distance = 10;
 
   controlsEnabled = true;
 

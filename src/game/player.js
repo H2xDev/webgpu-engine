@@ -27,6 +27,12 @@ export class Player extends Entity3D {
 
   ready = false;
 
+  /** Optional hook that overrides the default walkability check: (target, dir) => boolean. May have side effects (pushing, unlocking). */
+  canMove = null;
+
+  /** Called each time a roll finishes, before the next roll can start. */
+  onLand = null;
+
   constructor() {
     super()
     this.meshInstance = this.addChild(new MeshInstance(
@@ -42,7 +48,7 @@ export class Player extends Entity3D {
     this.meshInstance.transform.origin = [0, 10, 0];
 
     Tween
-      .property(this.meshInstance.transform, "origin", [0.0, 0.0, 0.0], 3000, "easeOutCirc")
+      .property(this.meshInstance.transform, "origin", [0.0, 0.0, 0.0], 1000, "easeOutCirc")
       .then(() => this.ready = true);
 
 
@@ -144,6 +150,7 @@ export class Player extends Entity3D {
         this.cell = this.roll.target;
         this.roll = null;
         this.placeAt(this.cell[0], this.cell[1], this.baseY);
+        this.onLand?.();
       }
     }
 
@@ -152,7 +159,8 @@ export class Player extends Entity3D {
         if (!InputController.is_key_pressed(key)) continue;
 
         const target = [this.cell[0] + dir[0], this.cell[1] + dir[1]];
-        if (!this.isWalkable(target)) continue;
+        const canMove = this.canMove ? this.canMove(target, dir) : this.isWalkable(target);
+        if (!canMove) continue;
 
         this.startRoll(dir);
         break;
